@@ -1,0 +1,22 @@
+        !COMPILER-GENERATED INTERFACE MODULE: Mon Feb 27 23:29:54 2023
+        ! This source file is for reference only and may not completely
+        ! represent the generated interface used by the compiler.
+        MODULE ITM_DLL_INIT__genmod
+          INTERFACE 
+            FUNCTION ITM_DLL_INIT(INPUT_FILE,REPORT_FILE,OUTPUT_FILE,   &
+     &ITM_FILE,DEBUG_FILE,INPUT_FILE_LEN,REPORT_FILE_LEN,OUTPUT_FILE_LEN&
+     &,ITM_FILE_LEN,DEBUG_FILE_LEN)
+              INTEGER(KIND=4), INTENT(IN) :: DEBUG_FILE_LEN
+              INTEGER(KIND=4), INTENT(IN) :: ITM_FILE_LEN
+              INTEGER(KIND=4), INTENT(IN) :: OUTPUT_FILE_LEN
+              INTEGER(KIND=4), INTENT(IN) :: REPORT_FILE_LEN
+              INTEGER(KIND=4), INTENT(IN) :: INPUT_FILE_LEN
+              CHARACTER(LEN=INPUT_FILE_LEN), INTENT(IN) :: INPUT_FILE
+              CHARACTER(LEN=REPORT_FILE_LEN), INTENT(IN) :: REPORT_FILE
+              CHARACTER(LEN=OUTPUT_FILE_LEN), INTENT(IN) :: OUTPUT_FILE
+              CHARACTER(LEN=ITM_FILE_LEN), INTENT(IN) :: ITM_FILE
+              CHARACTER(LEN=DEBUG_FILE_LEN), INTENT(IN) :: DEBUG_FILE
+              INTEGER(KIND=4) :: ITM_DLL_INIT
+            END FUNCTION ITM_DLL_INIT
+          END INTERFACE 
+        END MODULE ITM_DLL_INIT__genmod
