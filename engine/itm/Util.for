@@ -112,7 +112,6 @@
 	parint1000 = 0
 	paramOP1 = 	Q; parintOP1 = j
 	n = 1; x(1) = y
-	!write(99,*),'Ynorm1', x(1)
 
 	tol_local = 1.d-8
 	call hybrd1 (Norm_iter, n, x, fvec, tol_local, info )
