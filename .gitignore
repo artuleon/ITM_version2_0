@@ -1,5 +1,2 @@
-engine/build/ITM_Debug/
-engine/build/ITM_Release/
-engine/build/ITM_OUT_Debug/
-engine/build/ITM_OUT_Release/
 bin/
+engine/build/
