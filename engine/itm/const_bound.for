@@ -201,7 +201,7 @@
               CALL RANDOM_NUMBER(randomnumber) 
               yb = ydry(j) + randomnumber*(yref(j)-ydry(j))
               x(1) = yb
-		    !call endprog; GLOBAL_STATUS_FLAG = 1; return
+		    call endprog; GLOBAL_STATUS_FLAG = 1; return
 	endif
       
       If (Id1 == 1)then 
