@@ -1,28 +1,14 @@
-! This file is part of the ITM model.
-!
-! Copyright 2009 University of Illinois at Urbana-Champaign
-! Copyright 2011 Oregon State University, Corvallis
-!
-! ITM is a free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published
-! by the Free Software Foundation; either version 2.0 of the
-! License, or (at your option) any later version.
-! 
-! This program is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-! 
-! You should have received a copy of the GNU General Public License
-! along with this program; if not, write to the Free Software
-! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-! 02110-1301, USA.
-!--------------------------------------------------------------------
+!******************************************************************************
+!Project:      ITM (Illinois Transient Model)
+!Version:      2.0
+!Module:       itm_accessors
+!Description:  retrieves certain project properties
+!Authors:      see AUTHORS
+!Copyright:    see LICENSE
+!License:      see LICENSE
+!Last Updated: 03/01/2023
+!******************************************************************************
 
-!====================================================================
-! This module is used to retrieve certain project properties.
-!====================================================================
-    
 module itm_accessors
 use common_module
 use itm_table
@@ -75,7 +61,7 @@ integer :: ts
     flow = 0.0
     ts = inflow(node_index)%tseries
     if (ts > 0) then
-        flow = table_tseries_lookup(tseries(ts), time, .FALSE.)
+        flow = table_tseries_lookup(tseries(ts), time, .TRUE., .FALSE.)
         flow = flow * inflow(node_index)%scale_factor
     end if
     flow = flow + inflow(node_index)%baseline
@@ -124,7 +110,7 @@ integer :: k
     q = 0d0
     k = node_curve(node_index)
     if (k > 0) then
-        q = table_lookup(curve(k), h)
+        q = table_lookup(curve(k), h, .TRUE.)
     end if
 
 end subroutine itm_get_Q_from_rat_curve
@@ -155,7 +141,7 @@ integer :: k
     if (depth == 0.0) return
     k = node_curve(node_index)
     if (k > 0) then
-        storage = table_lookup(curve(k), depth)
+        storage = table_lookup(curve(k), depth, .TRUE.)
     end if
 
 end subroutine itm_get_storage
@@ -174,7 +160,7 @@ integer :: k
     if (storage == 0.0) return
     k = node_curve(node_index)
     if (k > 0) then
-        depth = table_reverse_lookup(curve(k), storage)
+        depth = table_reverse_lookup(curve(k), storage, .TRUE.)
     end if
 
 end subroutine itm_get_storage_depth
@@ -205,9 +191,9 @@ character(64) :: fmt
     
     ! Find a new target percent opening
     if (i > 0) then
-        target_opening = table_tseries_lookup(tseries(i), time, .TRUE.)
+        target_opening = table_tseries_lookup(tseries(i), time, .FALSE., .TRUE.)
     else if (j > 0 .and. k > 0) then
-        target_opening = table_lookup(curve(k), yres_jun_old(j))
+        target_opening = table_lookup(curve(k), yres_jun_old(j), .FALSE.)
     else
         target_opening = opening
     end if
@@ -234,11 +220,6 @@ character(64) :: fmt
     new_opening = min(new_opening, 100d0)
     new_opening = max(new_opening, 0d0)
     
-!    if (i > 0) then
-!        fmt = '(2x, f10.4, 2x, f8.4, 2x, f8.4, 2x, f8.4)'
-!        write(98,fmt) T_GLOBAL, opening, target_opening, new_opening
-!    end if
-
 end function itm_get_gate_opening
 
   
@@ -254,7 +235,7 @@ integer :: k
 
     k = node_curve(node_index)
     if (k > 0) then
-        coeff = table_lookup(curve(k), opening)
+        coeff = table_lookup(curve(k), opening, .TRUE.)
     else
         coeff = -1d0
     end if
