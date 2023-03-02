@@ -1,27 +1,15 @@
-! This file is part of the ITM model.
-!
-! Copyright 2009 University of Illinois at Urbana-Champaign
-! Copyright 2011 Oregon State University, Corvallis
-!
-! ITM is a free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published
-! by the Free Software Foundation; either version 2.0 of the
-! License, or (at your option) any later version.
-! 
-! This program is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-! 
-! You should have received a copy of the GNU General Public License
-! along with this program; if not, write to the Free Software
-! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-! 02110-1301, USA.
-!--------------------------------------------------------------------
+!******************************************************************************
+!Project:      ITM (Illinois Transient Model)
+!Version:      2.0
+!Module:       itm_pump
+!Description:  models a pump contained in a pipe link
+!Authors:      see AUTHORS
+!Copyright:    see LICENSE
+!License:      see LICENSE
+!Last Updated: 03/01/2023
+!******************************************************************************
 
 !====================================================================
-! This module is used to model a pump contained in a pipe link.
-!
 ! pump_data(:) is an array of pump_t data types, as defined in
 ! the common_module, that contains the properties of each pump. The
 ! pump_index(:) array has an entry for each pipe which is 0 if the
@@ -162,12 +150,12 @@ real(8) :: s, depth
     
     ! Pump uses time series control
     if (i > 0) then
-        s = table_tseries_lookup(tseries(i), time, .TRUE.)
+        s = table_tseries_lookup(tseries(i), time, .FALSE., .TRUE.)
         
     ! Pump uses node depth control
     else if (n > 0 .and. k > 0) then
         depth = itm_get_node_depth(n)
-        s = table_lookup(curve(k), depth)
+        s = table_lookup(curve(k), depth, .FALSE.)
     end if
 
     ! Set new pump speed
