@@ -63,11 +63,8 @@
 	!Nodetype = inflowing or outflowing
 
 	!To enforce that the minimum water depth at pond is ydropmin(R)
-	!if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
-	!	yres_jun_old(R) = ydropmin(R)
- !     endif	
-      if (yres_jun_old(R) < 0d0)then !ydropmin(R))then
-		yres_jun_old(R) = 0d0
+	if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
+		yres_jun_old(R) = ydropmin(R)
       endif	
 	
 	tim = tf	
@@ -85,12 +82,6 @@
       
 	Qinflow = (Qinf_old+Qinf_new)/2d0 
       temp3 = Qinflow + PumpFlowToNode(R) !We are adding pump flow to compute the water elevation in the node 
-
-   !   if (abs(PumpFlowToNode(R)) > 0.000001)then
-   !           write(98,*),'pump flow'
-   !           write(99,*),'pump flow'
-			!call endprog; GLOBAL_STATUS_FLAG = 1; return
-   !   endif
       
 	IDf1(:) = -1
 	do j = 1, NodeNS(r)

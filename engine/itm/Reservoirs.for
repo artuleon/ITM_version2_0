@@ -70,21 +70,10 @@
 		call endprog; GLOBAL_STATUS_FLAG = 1; return
       endif  
             
-      Outflow_limited(R) = Reser_outflow(R) !Reservoir outflow. This may be zero for shallow water depths
-      if (NodeNS(R) == 0)then 
-          if (yres_jun_old(R) <= 0d0)then
-              yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-          endif  
-      else
-      !    if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
-		    !yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
-      !    endif	
-          
-          if (yres_jun_old(R) < 0d0)then
-              yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-          endif  
+      Outflow_limited(R) = Reser_outflow(R) !Reservoir outflow. This may be zero for shallow water depths      
+      if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
+	    yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
       endif
-      
       
       call itm_get_storage(R,yres_jun_old(R),Stora_old) 
       
@@ -117,8 +106,8 @@
       endif
       
       !To enforce that the minimum water depth at pond is ydropmin(R). This is not for reservoir with pumps     
-      if (yres_jun_old(R) < 0d0)then
-		yres_jun_old(R) = 0d0
+      if (yres_jun_old(R) < ydropmin(R))then
+		yres_jun_old(R) = ydropmin(R)
           Outflow_limited(R) = 0d0
       endif
       

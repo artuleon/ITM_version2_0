@@ -46,7 +46,7 @@
     Integer L1,L2,L3,L4,IdFlow_temp
     double precision Q2,dh1,dh2,A,Ts,dmin,Amin,temcel,Vmin,Qb,Dt
     double precision sum_temp1,sum_temp2,sum_temp3,Stora_new 
-    double precision dx1max, dx2max,dx3max,drop_min
+    double precision dx1max, dx2max,dx3max,drop_min,tempvar
     !**** Added to common_module, allocated in project.f90
     !Integer Init_depth_type(1000)
     !double precision Init_disch(1000),Init_depth(1000)
@@ -769,7 +769,17 @@ do R =1,Nnodes
    
     do j=1,NodeNS(R) !For rating curve
         if (BCnode(R) == 30)then
-            Drop(R,1) = weir_invert(R) - junct_elev(R)
+            Drop(R,1) = weir_invert(R) - junct_elev(R)            
+            call itm_get_Q_from_rat_curve(R,abs(Drop(R,1)),QL)	
+            call itm_get_Q_from_rat_curve(R,abs(1.05*Drop(R,1)),QR)	
+            if (dabs(QL) > 0.001 .or. dabs(QL-QR) < Tol_int_10_14)then
+                call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
+                write(98,*),'Weir height in node ',trim(temp_id), ' is (m): ', abs(Drop(R,1)),' , but'
+                write(98,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
+                write(99,*),'Weir height in node ',trim(temp_id), ' is (m) ', abs(Drop(R,1)),' , but'
+                write(99,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
+                call endprog; GLOBAL_STATUS_FLAG = 1; return
+            endif
         endif
     enddo
     
@@ -1106,59 +1116,33 @@ do R =1,Nnodes
 !Initial water depth for reservoirs and junctions   
 do R=1,Nnodes       
     If(BCnode(R) == 20.or.BCnode(R) == 7.or.BCnode(R) == 4 &
-           .or.BCnode(R) == 40)then !reservoirs and junctions                      
-        do j=1,NodeNS(R)
-            if(Drop(R,j) == dropmin(R))then
+           .or.BCnode(R) == 40)then !reservoirs and junctions  
+        If (NodeNS(R) == 0)then 
+            ydropmin(R) = 0d0
+        else
+            L3 = NodeID(R,1)
+            tempvar = Drop(R,1) + d(L3) 
+            ydropmin(R) = ydry(L3) !This is teh minimum water depth at reservoirs, junctions and dropshafts        
+            do j=1,NodeNS(R)
                 L3 = NodeID(R,j)
-                goto 200
-            endif
-
-            if(j == NodeNS(R))then
-                write(98,*), 'Drop(R,j) .ne. dropmin'
-                write(98,*), 'Subr. INIT'
-                write(99,*), 'Drop(R,j) .ne. dropmin'
-                write(99,*), 'Subr. INIT'
-                call endprog; GLOBAL_STATUS_FLAG = 1; return
-            endif
-        enddo
-              
-
-              !ydropmin(R) = 1.5*ydry(L3) !before it was 3*ydry 
-              
-              !If(BCnode(R) == 20)then !Reservoir boundary
-              !    ydropmin(R) = ydry(L3) !before it was 3*ydry  
-              !else
-                        
-200         ydropmin(R) = 0.001*diamax + dropmin(R) !before it was 1.5*ydry 
-            
-            if (ini_cond == 1)then  !When constant water depth is used as initial condition
-                !water_init_elevation = -10d0
-                yres_jun_old(R) = max(water_init_elevation - junct_elev(R),flowdepth_res(R))
-            else
-                yres_jun_old(R) = flowdepth_res(R)  !Later we can add this
-                !write (99,*),'flow_depth_reser 1',flowdepth_res(R)
-            endif            
-              
-            !if flow depth is smaller than the minimum elevation of the pipe invert
-            !that connects wit the node, the initial water elevation is assumed to be at 
-            !the elevation of this minimum invert
-            
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ADD THIS      
-            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ADD THIS
-            if (NodeNS(R) == 0)then 
-                if (yres_jun_old(R) <= 0d0)then
-                    yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-                endif  
-            else
-                if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
-		            yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
-                endif	         
-            endif
-            !call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes      
-            !write(99,*), 'BC,node, yres_jun_old(R) ',BCnode(R),temp_id,yres_jun_old(R)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ADD THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ADD THIS
-            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ADD THIS
-        endif       
+                if (Drop(R,j) + d(L3) < tempvar)then 
+                    tempvar = Drop(R,j) + d(L3)
+                    ydropmin(R) = ydry(L3)
+                endif
+            enddo 
+        endif
+        !ydropmin(R) = 1.5*ydry(L3) !before it was 3*ydry 
+        if (ini_cond == 1)then  !When constant water depth is used as initial condition
+            !water_init_elevation = -10d0
+            yres_jun_old(R) = max(water_init_elevation - junct_elev(R),flowdepth_res(R))
+        else
+            yres_jun_old(R) = flowdepth_res(R)  !Later we can add this
+            !write (99,*),'flow_depth_reser 1',flowdepth_res(R)
+        endif            
+        if (yres_jun_old(R) < ydropmin(R))then
+            yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
+        endif            
+    endif           
 enddo
 !call endprog; GLOBAL_STATUS_FLAG = 1; return 
 
@@ -1412,24 +1396,24 @@ enddo
             call Area_from_H(j,p1,area,TH,RH,0)
             area_weir(R) =  area             
             
-            call itm_get_Q_from_rat_curve(R,p1,Qb)
-            if(abs(Qb) > Qmin(1)) then 
-                temp_id = ''
-                call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes           
-                write(98,*),'There is a rating curve at node  ', trim(temp_id), ','
-                write(98,*),'which has a weir of depth of p1 =', p1,'m, '
-                write(98,*),'but, get_Q_from_rat_curve(R,p1,Qb) gives'
-                write(98,*),'a flow discharge (Qb [m3/s]) > 0 for water depths'
-                write(98,*),'smaller than p1. Qb [m3/s] =',Qb
-                write(98,*),'Check rating curve at node',trim(temp_id)
-                write(99,*),'There is a rating curve at node  ', trim(temp_id), ','
-                write(99,*),'which has a weir of depth of p1 =', p1,'m, '
-                write(99,*),'but, get_Q_from_rat_curve(R,p1,Qb) gives'
-                write(99,*),'a flow discharge (Qb [m3/s])>0 for water depths'
-                write(99,*),'smaller than p1. Qb [m3/s] =',Qb
-                write(99,*),'Check rating curve at node',trim(temp_id)
-                call endprog; GLOBAL_STATUS_FLAG = 1; return  
-            endif
+            !call itm_get_Q_from_rat_curve(R,p1,Qb)
+            !if(abs(Qb) > Qmin(1)) then 
+            !    temp_id = ''
+            !    call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes           
+            !    write(98,*),'There is a rating curve at node  ', trim(temp_id), ','
+            !    write(98,*),'which has a weir of depth of p1 =', p1,'m, '
+            !    write(98,*),'but, get_Q_from_rat_curve(R,p1,Qb) gives'
+            !    write(98,*),'a flow discharge (Qb [m3/s]) > 0 for water depths'
+            !    write(98,*),'smaller than p1. Qb [m3/s] =',Qb
+            !    write(98,*),'Check rating curve at node',trim(temp_id)
+            !    write(99,*),'There is a rating curve at node  ', trim(temp_id), ','
+            !    write(99,*),'which has a weir of depth of p1 =', p1,'m, '
+            !    write(99,*),'but, get_Q_from_rat_curve(R,p1,Qb) gives'
+            !    write(99,*),'a flow discharge (Qb [m3/s])>0 for water depths'
+            !    write(99,*),'smaller than p1. Qb [m3/s] =',Qb
+            !    write(99,*),'Check rating curve at node',trim(temp_id)
+            !    call endprog; GLOBAL_STATUS_FLAG = 1; return  
+            !endif
             !!Maximum flow specified at the rating curve. This is used to check if the water level in the rating curve is exceeded. 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             temp100 = 10.**14.

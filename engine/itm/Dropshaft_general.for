@@ -67,19 +67,10 @@
       Qinflow = (Qinf_old+Qinf_new)/2d0
       Ares = Ares_junct(R)
       
-      !To enforce that the minimum water depth at pond then is ydropmin(R) whene there is no pumps 
-      if (NodeNS(R) == 0)then 
-            if (yres_jun_old(R) < 0d0)then
-                yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-            endif  
-      else
-            if (yres_jun_old(R) < 0d0)then
-                yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-            endif  
-      !      if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
-		    !yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
-      !      endif	         
-      endif       
+      !To enforce that the minimum water depth at pond then is ydropmin(R) (this is zero for pumps and very small for otehr nodes) 
+      if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
+          yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
+      endif
             
       !If there are only pumps connected to the node      
       if (NodeNS(R) == 0)then  !NodeNS(R) = Number of pipes connected to each node     
