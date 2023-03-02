@@ -1121,12 +1121,12 @@ do R=1,Nnodes
             ydropmin(R) = 0d0
         else
             L3 = NodeID(R,1)
-            tempvar = Drop(R,1) + d(L3) 
-            ydropmin(R) = ydry(L3) !This is teh minimum water depth at reservoirs, junctions and dropshafts        
+            tempvar = Drop(R,1) + ydry(L3) 
+            ydropmin(R) = ydry(L3) !This is the minimum water depth at reservoirs, junctions and dropshafts        
             do j=1,NodeNS(R)
                 L3 = NodeID(R,j)
-                if (Drop(R,j) + d(L3) < tempvar)then 
-                    tempvar = Drop(R,j) + d(L3)
+                if (Drop(R,j) + ydry(L3) < tempvar)then 
+                    tempvar = Drop(R,j) + ydry(L3)
                     ydropmin(R) = ydry(L3)
                 endif
             enddo 
