@@ -2,7 +2,7 @@
 <VisualStudioUserFile ProjectType="typeDynamicLibrary" ProjectCreator="Intel Fortran" Keyword="Dll" Version="11.0" ProjectIdGuid="{97A48373-9377-44FE-A226-700CC2A288F5}">
 	<Configurations>
 		<Configuration Name="Debug|Win32" Command="D:\ITM_Current_version\engine\build\ITM_OUT_Debug\ITM.exe"/>
-		<Configuration Name="Release|Win32" Command="D:\ITM_Current_version\engine\build\ITM_OUT_Release\ITM.exe"/>
+		<Configuration Name="Release|Win32" Command="D:\ITMGitHub\ITM_version2_0\engine\build\ITM_OUT_Release\ITM.exe"/>
 		<Configuration Name="Intel_SSA|Win32"/>
 		<Configuration Name="Debug|x64"/>
 		<Configuration Name="Release|x64"/>

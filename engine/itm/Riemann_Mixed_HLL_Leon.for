@@ -113,8 +113,8 @@
       !Epsilon is defined in the common module as 10^-12
       Dry_bed_or_discontinuous = 0 !1 indicates that the flow is doscontinuos or dry bed
       
-      drytempL = hL-ydry_Cutoff(j)
-      drytempR = hR-ydry_Cutoff(j)
+      drytempL = hL-ydry(j)
+      drytempR = hR-ydry(j)
       
       !hL < ydry_Cutoff(j)
       !hL-ydry_Cutoff(j) <= 0d0

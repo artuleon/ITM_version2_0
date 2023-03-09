@@ -62,66 +62,55 @@ subroutine get_pump_flows
 ! Find flow through all pump links.
 !====================================================================
 integer :: i, j, k, R
-double precision depth_after_pumping
+double precision depth_after_pumping, Storage_new, Stora_old
 character(IDLEN) :: temp_id
 
     PumpFlowToNode = (/ (0d0, k = 1,Nnodes) /)
+    Qpump_link = (/ (0d0, k = 1,Npipes) /)
     do j = 1, Npipes 
-         if (pump_index(j) < 1) cycle     !link not a pump
-         call pump_set_speed(j, T_GLOBAL)
-         Qpump_link(j) = pump_find_flow(j)
-         k = Node1(j) !Upstream node 
-         PumpFlowToNode(k) = PumpFlowToNode(k) - Qpump_link(j)
-         k = Node2(j) !downstream node
-         PumpFlowToNode(k) = PumpFlowToNode(k) + Qpump_link(j)
+         if (pump_index(j) > 0) then 
+             call pump_set_speed(j, T_GLOBAL)
+             Qpump_link(j) = pump_find_flow(j)
+             k = Node1(j) !Upstream node 
+             PumpFlowToNode(k) = PumpFlowToNode(k) - Qpump_link(j)
+             k = Node2(j) !downstream node
+             PumpFlowToNode(k) = PumpFlowToNode(k) + Qpump_link(j)
+         endif         
     end do
     
     !To ckeck that there is no excessive pumping from a sump node that may result in negative water depths    
     do R = 1, Nnodes
         if (NPipes_At_Node_with_Pumps(R) > 0)then
-            If(BCnode(R) == 20) cycle !Check is done for reservoirs in the own routine
-            depth_after_pumping =  yres_jun_old(R) + PumpFlowToNode(R)*DT_GLOBAL/Ares_junct(R)
+            If(BCnode(R) == 20)then
+                call itm_get_storage(R,yres_jun_old(R),Stora_old) 
+                Storage_new = Stora_old  + PumpFlowToNode(R)*DT_GLOBAL
+                call itm_get_storage_depth(R,Storage_new, depth_after_pumping) 
+            else
+                depth_after_pumping =  yres_jun_old(R) + PumpFlowToNode(R)*DT_GLOBAL/Ares_junct(R)
+            endif
             
-            if  (PumpFlowToNode(R) < -0.001)then    
-                if (depth_after_pumping < 0.30)then !if the sump node may drop below 1 ft (0.30 m), set the outflowing pump equal to zero
-                    do i = 1,  NPipes_At_Node_with_Pumps(R)
-                      !write(98,*),'NodetypePump(R,i)',NodetypePump(R,i)                    
+            if (depth_after_pumping <= 0.30)then !If the sump node after pumping drops below 1 ft (0.30 m), set the pump flow equal to zero                         
+               if (abs(PumpFlowToNode(R)) > 0.001)then
+                    do i = 1,  NPipes_At_Node_with_Pumps(R)                  
                         if (NodetypePump(R,i) == 2)then !outflowing for pump
                             j = NodePumpID(R,i); Qpump_link(j) = 0d0
-                            !call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
-                            !write(98,*),'pump, Pipe = ',trim(temp_id)
-                            !write(98,*),'Qpump_link(j)',Qpump_link(j)           
-                            !write(98,*),'NodetypePump',NodetypePump(R,i)    
-                            !write(99,*),'pump, Pipe = ',trim(temp_id)
-                            !write(99,*),'Qpump_link(j)',Qpump_link(j)           
-                            !write(99,*),'NodetypePump',NodetypePump(R,i)    
                         endif 
-                    enddo                 
-                endif
-            elseif (PumpFlowToNode(R) >= 0.001)then                
-                If(BCnode(R) == 4 .or. BCnode(R) == 7)then
-                    if (depth_after_pumping > hdrops_overf(R))then
-                        call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes                        
-                        write(98,*),'ITM_Solver. Node depth exceeds node max. depth. Increase max. depth of node: ',trim(temp_id)
-                        write(99,*),'ITM_Solver. Node depth exceeds node max. depth. Increase max. depth of node: ',trim(temp_id)
-                        write(98,*),'Node Depth after_pumping (m) = ',depth_after_pumping
-                        write(98,*),'Node maximum depth (m) = ',hdrops_overf(R)
-                        call endprog; GLOBAL_STATUS_FLAG = 1; return
-                    endif
-                endif                       
+                    enddo 
+               endif
             endif
         endif
-    end do 
-     
+    end do      
     
     PumpFlowToNode = (/ (0d0, k = 1,Nnodes) /)
     do j = 1, Npipes 
-         if (pump_index(j) < 1) cycle     !Update pumping flows         
-         k = Node1(j) !Upstream node 
-         PumpFlowToNode(k) = PumpFlowToNode(k) - Qpump_link(j)
-         k = Node2(j) !downstream node
-         PumpFlowToNode(k) = PumpFlowToNode(k) + Qpump_link(j)
+         if (pump_index(j) > 0) then   !Update pumping flows         
+            k = Node1(j) !Upstream node 
+            PumpFlowToNode(k) = PumpFlowToNode(k) - Qpump_link(j)
+            k = Node2(j) !downstream node
+            PumpFlowToNode(k) = PumpFlowToNode(k) + Qpump_link(j)
+        endif            
     end do
+    
 end subroutine get_pump_flows
 
 
@@ -203,12 +192,12 @@ character(IDLEN) :: temp_id
         endif
                   
         if (IdFlow(j,i) == 0) then 
-            if (Atemp1(i) <= 1.001*Adry(j)) then     
+            if (Atemp1(i) <= 1.0001*Adry(j)) then     
                 Atemp1(i) = Adry(j)
                 htemp1(i) = ydry(j)
                 Qtemp1(i) = 0d0
                 IdFlow1(i) = 0
-                cycle !cycle allows jumping back to the beginning of a do loop
+                cycle 
             endif                             
                       
             if (Atemp1(i) < Aref(j)) then
@@ -233,16 +222,29 @@ character(IDLEN) :: temp_id
         call Area_from_H(j, htemp1(i), area, Ts, RH, IdFlow1(i))
         Qtemp1(i) = Q0(j,i) + DT_GLOBAL / Dx(j) * (FFR2(j,i) - FFL2(j,i+1))
         utemp = dabs(Qtemp1(i) / Atemp1(i))
-        if (Atemp1(i) < Aref(j) / 32d0 .and. IdFlow1(i) == 0) then
-            if (utemp > 1d0) then
-                utemp = 1d0 * SIGN(1d0, Qtemp1(i))
-                Qtemp1(i) = utemp * Atemp1(i)
-            endif 
-        else 
-            if (utemp > 10d0) then
-                utemp = 10d0 * SIGN(1d0, Qtemp1(i))
-                Qtemp1(i) = utemp * Atemp1(i)
+        
+        If (ISNAN(utemp)) then   
+            call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
+            write(99,*),'NaN is found in utemp. itm_solver. Pipe No',j,'cell=',i
+            write(98,*),'NaN is found in utemp. itm_solver. Pipe No',j,'cell=',i
+            utemp = 0d0;  Qtemp1(i) = 0d0
+            call endprog; GLOBAL_STATUS_FLAG = 1; return  
+        endif
+        
+        
+        if (IdFlow1(i) == 0) then
+            if (htemp1(i) < 0.05*yref(j) .or.   htemp1(i) < 0.03) then 
+                if (utemp > 2d0) then
+                    utemp = 2d0 * SIGN(1d0, Qtemp1(i))
+                    Qtemp1(i) = utemp * Atemp1(i)
+                endif 
             endif
+        endif
+            
+        
+        if (utemp > 20d0) then
+            utemp = 20d0 * SIGN(1d0, Qtemp1(i))
+            Qtemp1(i) = utemp * Atemp1(i)
         endif
                   
         If (ISNAN(htemp1(i)) .or. ISNAN(Qtemp1(i))) then   

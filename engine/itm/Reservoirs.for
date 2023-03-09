@@ -82,6 +82,20 @@
           call endprog; GLOBAL_STATUS_FLAG = 1; return
       endif
       
+      !Storage_new = 100000
+      ! call itm_get_storage_depth(R,Storage_new, yres) 
+      !  write(98,*),'Storage_new = 100000 ',yres
+      !
+      !   Storage_new = 200000
+      ! call itm_get_storage_depth(R,Storage_new, yres) 
+      !  write(98,*),'Storage_new = 200000 ',yres
+      !  
+      !  Storage_new = (100000d0+200000d0)/2d0
+      ! call itm_get_storage_depth(R,Storage_new, yres) 
+      !  write(98,*),'Storage_new = (100000d0+200000d0)/2d0 ',yres
+      !  call endprog; GLOBAL_STATUS_FLAG = 1; return         
+      
+      
       !If there are only pumps connected to the reservoir node      
       if (NodeNS(R) == 0)then  !NodeNS(R) = Number of pipes connected to each node     
           temp3 = PumpFlowToNode(R) - Outflow_limited(R)
@@ -188,7 +202,7 @@ c     If depths are shallow, solve Riemann problem instead of junction equations
 
 		!Choosing appropiate tolerance for solving equations
           if (sum == 0 )then
-              tol_local = Tol_int_10_4    
+              tol_local = Tol_int_10_5    
           elseif (sum == 2)then
               tol_local = Tol_int_10_6
           endif
@@ -562,13 +576,13 @@ c     If depths are shallow, solve Riemann problem instead of junction equations
 	call itm_get_storage(R,x(2),Stora_new) 
 	if (Nodetype(R,1) == 2)then !outflowing
 		!sign for x(3) is negative for upstream reservoir
-		res_temp = (-x(3) + PumpFlowToNode(R) - Outflow_limited(R))*dt
+		res_temp = -x(3) + PumpFlowToNode(R) - Outflow_limited(R)
 	Elseif (Nodetype(R,1) == 1)then !inflowing
-		res_temp = (x(3)  + PumpFlowToNode(R) - Outflow_limited(R))*dt
+		res_temp = x(3)  + PumpFlowToNode(R) - Outflow_limited(R)
 	else
 		write(98,*),'Nodetype(R,1) .ne. 1,2. Subr. reservoir'
 		call endprog; GLOBAL_STATUS_FLAG = 1; return
 	Endif
-	fvec(3) = res_temp - (Stora_new-Stora_old)
+	fvec(3) = res_temp - (Stora_new-Stora_old)/dt
  400	return
       end

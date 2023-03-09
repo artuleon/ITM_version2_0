@@ -1033,6 +1033,6 @@ c     &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 	end do
 	temp2 = 5d-1*(Qinf_new+Qinf_old) + PumpFlowToNode(R) 
 	temp4 = (x(n)-yres_jun_old(R))
-      fvec(n) = (temp2+Qsum)*dt - temp4*Ares
+      fvec(n) = temp2 + Qsum - temp4*Ares/dt
 120	continue
       end

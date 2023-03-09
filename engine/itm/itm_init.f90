@@ -517,7 +517,7 @@ enddo
     enddo
       
     !Dry bed and free surface and pressurized flow limits
-    dry_diam_fraction_min = 1000d0 !1000 works very well  
+    dry_diam_fraction_min = 500d0 !1000 works very well  
     dry_diam_fraction_max = 50d0
     Ratio_dry = dry_diam_fraction_min/dry_diam_fraction_max
     Interval_dry = Ratio_dry
@@ -708,7 +708,6 @@ do R =1,Nnodes
         AreaNodeminimum(R) = max(AreaNodeminimum(R),A)
     enddo
 enddo
-
 write(99,*)'_____________________________________________________' 
 write(99,*),'NodeID   PipeID   Pipe drop'
 !call endprog; GLOBAL_STATUS_FLAG = 1; return
@@ -817,19 +816,32 @@ do R =1,Nnodes
     max_elev_crown (R) = crown_elev_max
     max_crown_pipe(R) = pipe_max_crown  
     !write(99,*),'R,max_elev_crown (R)',R,max_elev_crown (R)
-    enddo   
-    write(99,*)'_____________________________________________________' 
+enddo   
+write(99,*)'_____________________________________________________' 
+write(99,*)'Node  Pipe  NodetypePump' 
+
+do R =1,Nnodes    
+    do i = 1,  NPipes_At_Node_with_Pumps(R)    
+        j = NodePumpID(R,i) !Pipe ID with pump
+        call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
+        call itm_get_swmm_id(1, j, temp_id2) ! 1 for pipes
+        WRITE(98,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NodetypePump(R,i)
+        WRITE(99,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NodetypePump(R,i)
+    enddo
+enddo
+
+write(99,*)'_____________________________________________________' 
     
       
     do R =1,Nnodes                  
         if (BCnode(R) == 4.or. BCnode(R)==7)then
-            if (Ares_junct(R) >= 10000.5)then !(100^2)  If Area is larger use a reservoir boundary
+            if (Ares_junct(R) >= 100000.5)then !(100^2)  If Area is larger use a reservoir boundary
                 call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
                 write(98,*),'Area of node ',temp_id
-                write(98,*),'is larger than 10^4.'
+                write(98,*),'is larger than 10^5.'
                 write(98,*),'Use a reservoir boundary for this node'  
                 write(99,*),'Area of node ',temp_id
-                write(99,*),'is larger than 10^4.'
+                write(99,*),'is larger than 10^5.'
                 write(99,*),'Use a reservoir boundary for this node'  
                 call endprog; GLOBAL_STATUS_FLAG = 1; return    
             endif              
@@ -1095,7 +1107,8 @@ do R =1,Nnodes
             !call itm_get_max_curve_val_x(R, VALUE)
             call itm_get_max_curve_val_x(R, value_reser)            
             reser_maxdepth(R)  = value_reser
-            write(99,*),'R,reser_maxdepth(R)',R, reser_maxdepth(R)      
+            call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
+            write(99,*),'Node, Max. Depth of reservoir ',temp_id, reser_maxdepth(R)      
             
             if(reser_maxdepth(R) <= 0d0)then
                 write(98,*),'Reservoir located at node',R, &
@@ -1108,9 +1121,6 @@ do R =1,Nnodes
             endif
         endif
     enddo 
-    
-    
-    
     
         
 !Initial water depth for reservoirs and junctions   

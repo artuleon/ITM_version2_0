@@ -37,7 +37,7 @@
 		conver_result = 1
 		parint1000 = 1
 		sum_no_converg = sum_no_converg + 1	  
-		write(99,*),'failure in convergence No', sum_no_converg 
+		!write(99,*),'failure in convergence No', sum_no_converg 
 		if (info == 0)then	
 			!write(99,*),'0, improper input parameters. Time = ',T_GLOBAL  
 		elseif (info == 2)then	
