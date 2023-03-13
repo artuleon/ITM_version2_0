@@ -35,7 +35,7 @@
     
     double precision teta
     double precision P_pho,conver,area,discharge,TH, p1  
-    double precision RH,yy,htemp,crown_elev_max,diamax
+    double precision RH,yy,htemp,crown_elev_max
     double precision Ynormal,Ycrit,Yconjugate,dxtemp,s_temp,ScIA    
     double precision temp100,temp101,y_temp
     !character*200  TITLE, Variab
@@ -385,17 +385,48 @@
     !write(99,*),'41: Gate Boundary condition (one pipe)
  !     write(99,*),'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&'
     
-    Drop(:,:) = 10000d0  !to be used for computing 
-    !mimimum water depth in dropshafts
-    !Computing drop heights at inlets and outlets 
-    !write(99,*),'Nnodes',Nnodes    
-    sum_drop2 = 0
+Drop(:,:) = 0d0  !to be used for computing 
+!mimimum water depth in dropshafts
+!Computing drop heights at inlets and outlets 
+!write(99,*),'Nnodes',Nnodes    
+sum_drop2 = 0
         
+!Calculating drops at each node
+do R =1,Nnodes   
+    do j=1,NodeNS(R)
+        If(BCnode(R) .ne. 30)then  
+            L3 = Node(R,j)
+            if(Nodetype(R,j) == 1)then !inflowing
+                Drop(R,j) = zb(L3,2)-junct_elev(R)
+            elseif(Nodetype(R,j) == 2)then !outflowing      
+                Drop(R,j) = zb(L3,1)-junct_elev(R)              
+            else 
+                write(98,*),'Subroutine Init. Nodetype .ne. 1,2' 
+                write(99,*),'Subroutine Init. Nodetype .ne. 1,2' 
+                call endprog; GLOBAL_STATUS_FLAG = 1; return
+            endif 
+        endif        
+    enddo
+   
+    do j=1,NodeNS(R) !For rating curve
+        if (BCnode(R) == 30)then
+            Drop(R,1) = weir_invert(R) - junct_elev(R)            
+            call itm_get_Q_from_rat_curve(R,abs(Drop(R,1)),QL)	
+            call itm_get_Q_from_rat_curve(R,abs(1.05*Drop(R,1)),QR)	
+            if (dabs(QL) > 0.001 .or. dabs(QL-QR) < Tol_int_10_14)then
+                call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
+                write(98,*),'Weir height in node ',trim(temp_id), ' is (m): ', abs(Drop(R,1)),' , but'
+                write(98,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
+                write(99,*),'Weir height in node ',trim(temp_id), ' is (m) ', abs(Drop(R,1)),' , but'
+                write(99,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
+                call endprog; GLOBAL_STATUS_FLAG = 1; return
+            endif
+        endif
+    enddo
+enddo     
     
     
-    
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
-    ! Change the name of boundaries for dropshafts, junctions and reservoirs if a pump is connected to the node
+! Change the name of boundaries for dropshafts, junctions and reservoirs if a pump is connected to the node
 do R =1,Nnodes 
     if (BCnode(R) == 4 .or. BCnode(R) == 7 .or. BCnode(R) == 20)then !Only for dropshafts, junctions and reservoirs              
             if (NodeNS(R) == 0)then !If true, all pipes connected to node are PUMPS
@@ -500,20 +531,6 @@ enddo
                 call endprog; GLOBAL_STATUS_FLAG = 1; return
             endif 
         endif
-        
-        !if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)           
-        !    if (S0(j) <= 0d0)then  !This should be modified later to acount for horizontal slopes
-        !        S0(j) = 0d0
-        !        call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
-        !        write(98,*),'pipe ID = ',trim(temp_id),'slope = ',S0(j)
-        !        write(98,*),'Pipe slopes, except pipe with pumps, must be at least 0.000000' 
-        !        write(98,*),'Change the invert of pipe inlet or outlet' 
-        !        write(99,*),'pipe ID = ',trim(temp_id),'slope = ',S0(j)
-        !        write(99,*),'Pipe slope must be at least 0.000000' 
-        !        write(99,*),'Change the invert of pipe inlet or outlet' 
-        !        call endprog; GLOBAL_STATUS_FLAG = 1; return
-        !    endif
-        !endif
     enddo
       
     !Dry bed and free surface and pressurized flow limits
@@ -697,7 +714,7 @@ do j=1,NR
             !call Phi1(j,y_for_phi_min,phi_min(j)) !Phi_max for iteration
     endif    
 enddo 
-diamax = maxval(d(:))
+
 
 !Area minimum at a junction
 !AreaNodeminimum =  !This is the minimum area specified at the node. This area cannot be too small. 
@@ -723,21 +740,12 @@ do R =1,Nnodes
     do j=1,NodeNS(R)
         If(BCnode(R) .ne. 30)then  
             L3 = Node(R,j)
-            if(Nodetype(R,j) == 1)then !inflowing
-                Drop(R,j) = zb(L3,2)-junct_elev(R)
-            elseif(Nodetype(R,j) == 2)then !outflowing      
-                Drop(R,j) = zb(L3,1)-junct_elev(R)              
-            else 
-                write(98,*),'Subroutine Init. Nodetype .ne. 1,2' 
-                write(99,*),'Subroutine Init. Nodetype .ne. 1,2' 
-                call endprog; GLOBAL_STATUS_FLAG = 1; return
-            endif 
         
             call itm_get_swmm_id(1, L3, temp_id2) ! 1 for pipes        
             WRITE(99,'(A10, A10 F6.1)'),trim(temp_id),trim(temp_id2),Drop(R,j) 
                       
             !Number_of_zero_drops = Number of zero drops 
-            if (dabs(Drop(R,j)) < 0.02*d(j))then
+            if (dabs(Drop(R,j)) < 0.02*d(L3))then
                 Number_of_zero_drops(R) =  Number_of_zero_drops(R) +1
                 ID_Number_of_zero_drops(R,j) = 1 !1 means that the drop is zero, 2 means that the drop is not flat. 
             endif  
@@ -764,22 +772,6 @@ do R =1,Nnodes
                 !smin = S0(pipe_min_point)
             endif
         endif        
-    enddo
-   
-    do j=1,NodeNS(R) !For rating curve
-        if (BCnode(R) == 30)then
-            Drop(R,1) = weir_invert(R) - junct_elev(R)            
-            call itm_get_Q_from_rat_curve(R,abs(Drop(R,1)),QL)	
-            call itm_get_Q_from_rat_curve(R,abs(1.05*Drop(R,1)),QR)	
-            if (dabs(QL) > 0.001 .or. dabs(QL-QR) < Tol_int_10_14)then
-                call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-                write(98,*),'Weir height in node ',trim(temp_id), ' is (m): ', abs(Drop(R,1)),' , but'
-                write(98,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
-                write(99,*),'Weir height in node ',trim(temp_id), ' is (m) ', abs(Drop(R,1)),' , but'
-                write(99,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
-                call endprog; GLOBAL_STATUS_FLAG = 1; return
-            endif
-        endif
     enddo
     
     !dropmin(R) = drop_min 
