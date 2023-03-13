@@ -538,11 +538,8 @@ enddo
     dry_diam_fraction_max = 50d0
     Ratio_dry = dry_diam_fraction_min/dry_diam_fraction_max
     Interval_dry = Ratio_dry
-    temp1 = (1d0/dry_diam_fraction_min)*dmin
+    temp1 = (1d0/dry_diam_fraction_min)*dmin    
     
-    
-
- !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   
 do j=1,NR       
     b2_max(j) = (1d0-1.d-6)*d(j)  !maximum water depth for open channel (for searches)
     call Area_from_H(j,b2_max(j),A2_max(j),Ts,RH,0) !maximum area for open channel     
@@ -552,13 +549,12 @@ do j=1,NR
           
     !Reference depth
     Yref(j) = yfree_press*d(j)
-    if (yref(j) > 0.96*d(j))then
-        yref(j) = 0.96*d(j) 
+    if (yref(j) > 0.99*d(j))then
+        yref(j) = 0.99*d(j) 
     endif 
           
     teta = 2d0*ACOS(1d0-2d0*Yref(j)/d(j))
-    Phiref(j) = 6.41*SIN(teta/4d0)*sqrt(g*d(j)/8d0)
-    !call Phi1(j,Yref(j),Phiref(j))             
+    Phiref(j) = 6.41*SIN(teta/4d0)*sqrt(g*d(j)/8d0)           
                 
     Aref(j) = 1d0/8d0*(teta-SIN(teta))*d(j)*d(j)
     call Area_from_H(j,Yref(j),A,Ts,RH,0)
@@ -571,7 +567,7 @@ do j=1,NR
     y_for_phi_max(j) = Yref(j)
     teta = 2d0*ACOS(1d0-2d0*y_for_phi_max(j)/d(j))
     phi_max(j) = 6.41*SIN(teta/4d0)*sqrt(g*d(j)/8d0)
-    !call Phi1(j,y_for_phi_max(j),phi_max(j)) !Phi_max for iteration
+    
           
     !dry bed 
     !ydry(j) = max(1.d-3, 1d0/200d0*dmin) !Max (1mm, 1/200 dmin)
@@ -592,14 +588,7 @@ do j=1,NR
                 y_temp = temp1 + (kkk-1d0)*temp1
                 ydry_Cutoff(j) = 1.00001*y_temp
                 ydry(j) = 1.005*ydry_Cutoff(j)
-                y_dry_iterat = ydry(j)
-                            
-                !if (y_dry_iterat < dmin/2000d0) then
-                !    kkk = kkk+1d0
-                !    goto 190
-                !endif
-                !write(99,*),'__________________________________________'
-                !write(99,*),'j,y_dry_iterat',j,y_dry_iterat
+                y_dry_iterat = ydry(j)               
               
                 call Area_from_H(j,y_dry_iterat,A_dry_iterat,Ts,RH,0)
                 A2_min(j) = 0.1*A_dry_iterat
@@ -621,35 +610,18 @@ do j=1,NR
               
                 call Riemann_Mixed_HLL_Leon(j,0,0, &
                     0,hL,hR,AL,AR,QL,QR,FF1L,FF1R,FF2L,FF2R,0,Qb)
-                A_dry_iterat = A_dry_iterat + DT_GLOBAL/Dx(j)*(FF1R-FF1L)
-              
-                !write(99,*),'j,A_dry_iterat',j,A_dry_iterat
+                A_dry_iterat = A_dry_iterat + DT_GLOBAL/Dx(j)*(FF1R-FF1L)                
                              
                 If (ISNAN(A_dry_iterat))then 
-                    kkk = kkk+1d0; goto 190
-                endif
-              
-                if (A_dry_iterat <= 1.d-8)then
-                    kkk = kkk+1d0; goto 190
-                endif
-              
-                if (A_dry_iterat >= 1.d-1*Aref(j))then
-                    kkk = kkk+1d0; goto 190
+                    goto 190
                 endif
               
                 call H_from_Area(j,A_dry_iterat,ydry(j),1022,0)
               
-                if (ydry(j) >= 1.d-1*yref(j))then
-                    kkk = kkk+1d0; goto 190
-                endif
-                !write(99,*),'j,ydry(j)',j,ydry(j)
-              
-                if (ydry(j) >=  1.d-6*dmin)then
+                if (ydry(j) >=  1.d-6*yref(j))then
                     ydry_Cutoff(j) = 1.00001*ydry(j)
                     kkk = Interval_dry + 1d0
-                    goto 192
-                else
-                    kkk = kkk+1d0; goto 190
+                    goto 192                
                 endif
 190             continue        
             enddo
@@ -662,8 +634,7 @@ do j=1,NR
             call endprog; GLOBAL_STATUS_FLAG = 1; return 
 192         continue
           
-            if (ydry(j) < 0d0 .or. ydry(j) > yref(j) &
-                             .or. ISNAN(A_dry_iterat) ) then
+            if (ydry(j) < 0d0 .or. ydry(j) > yref(j) .or. ISNAN(A_dry_iterat) ) then
                   write(98,*),'(ydry(j) < 0d0 .or. ydry(j) > d(j)' 
                   write(99,*),'(ydry(j) < 0d0 .or. ydry(j) > d(j)' 
                   call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
