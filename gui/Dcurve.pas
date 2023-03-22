@@ -3,8 +3,8 @@ unit Dcurve;
 {-------------------------------------------------------------------}
 {                    Unit:    Dcurve.pas                            }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/21/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/04/23                              }
 {                                                                   }
 {   Dialog form unit for editing a Curve object.                    }
 {-------------------------------------------------------------------}
@@ -70,21 +70,20 @@ uses
 const
   MAXITEMS = 100;
 
-  CurveTypeLabels: array[GATECURVE..CONTROLCURVE] of String =
-    ('Gate', 'Rating', 'Storage', 'Pump', 'Control');
+  CurveTypeLabels: array[STORAGECURVE..CONTROLCURVE] of String =
+    ('Storage', 'Pump', 'Rating','Control');
 
-  Xlabel: array[GATECURVE..CONTROLCURVE] of String =
-    ('Percent', 'Head', 'Depth', 'Flow', 'Depth');
+  Xlabel: array[STORAGECURVE..CONTROLCURVE] of String =
+    ('Depth', 'Flow', 'Depth', 'Depth');
 
-  Xunits: array[GATECURVE..CONTROLCURVE, 0..1] of String =
-    (('Open', 'Open'), ('(ft)', '(m)'),
-     ('(ft)', '(m)'),  ('(CFS)', '(CMS)'), ('(ft)', '(m)'));
+  Xunits: array[STORAGECURVE..CONTROLCURVE, 0..1] of String =
+    (('(ft)', '(m)'),  ('(CFS)', '(CMS)'),  ('(ft)', '(m)'),('(ft)', '(m)'));
 
-  Ylabel: array[GATECURVE..CONTROLCURVE] of String =
-    ('Head Loss', 'Outflow', 'Volume', 'Head', 'Setting');
+  Ylabel: array[STORAGECURVE..CONTROLCURVE] of String =
+    ('Volume', 'Head', 'Flow', 'Setting');
 
-  Yunits: array[GATECURVE..CONTROLCURVE, 0..1] of String =
-   (('Coeff.','Coeff.'), ('(CFS)','(CMS)'), ('(ft3)','(m3)'), ('(ft)','(m)'),
+  Yunits: array[STORAGECURVE..CONTROLCURVE, 0..1] of String =
+   (('(ft3)','(m3)'), ('(ft)','(m)'),  ('(ft)','(m)'),
     ('(Percent)','(Percent)'));
 
   MSG_NO_ID        = 'No curve name supplied.';
@@ -339,7 +338,7 @@ begin
   // Pump curve has X & Y axes switched
   SwitchXY  := False;
   UseStairs := False;
-//  if CurveType = CONTROLCURVE then UseStairs := True;
+  if CurveType = CONTROLCURVE then UseStairs := True;
 //  if CurveType = PUMPCURVE then SwitchXY := True;
 
   // Create a form to plot the curve on

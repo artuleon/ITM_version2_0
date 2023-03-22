@@ -3,8 +3,8 @@ unit Uutils;
 {-------------------------------------------------------------------}
 {                    Unit:    Uutils.pas                            }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/20/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/04/23                              }
 {                                                                   }
 {   Delphi Pascal unit containing general purpose utility           }
 {   routines.                                                       }

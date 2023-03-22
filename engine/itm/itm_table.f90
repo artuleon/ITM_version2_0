@@ -1,30 +1,18 @@
-! This file is part of the ITM model.
-!
-! Copyright 2009 University of Illinois at Urbana-Champaign
-! Copyright 2011 Oregon State University, Corvallis
-!
-! ITM is a free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published
-! by the Free Software Foundation; either version 2.0 of the
-! License, or (at your option) any later version.
-! 
-! This program is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-! 
-! You should have received a copy of the GNU General Public License
-! along with this program; if not, write to the Free Software
-! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-! 02110-1301, USA.
-!--------------------------------------------------------------------
+!******************************************************************************
+!Project:      ITM (Illinois Transient Model)
+!Version:      2.0
+!Module:       itm_table
+!Description:  represents a table of X-Y values
+!Authors:      see AUTHORS
+!Copyright:    see LICENSE
+!License:      see LICENSE
+!Last Updated: 03/01/2023
+!******************************************************************************
 
-!====================================================================
 ! This module defines a derived type used to store pairs of double
 ! precision values in a 2-D table that can represent either the X-Y
 ! data points of a curve or the time-value data in a time series.
 ! A table's data entries must have X-values in ascending order.
-!====================================================================
     
 module itm_table
 implicit none
@@ -106,12 +94,13 @@ real(8) :: x_max
 end function table_get_x_max
 
 
-function table_lookup(table, x_value) result(y_value)
+function table_lookup(table, x_value, interpolate) result(y_value)
 !====================================================================
 ! Return the y-value associated with an x-value in a table.
 !====================================================================
 type(table_t), intent(in) :: table
 real(8),       intent(in) :: x_value
+logical,       intent(in) :: interpolate
 real(8) :: y_value
 integer :: i
 associate (size => table%size, &
@@ -128,10 +117,16 @@ associate (size => table%size, &
         y_value = y(size)
     else
         do i = 2, size
-            if (x_value <= x(i)) then
-                y_value = table_interpolate(x_value, x(i-1), y(i-1), x(i), y(i))
+            
+            if (x_value < x(i)) then
+                if (interpolate == .TRUE.) then
+                    y_value = table_interpolate(x_value, x(i-1), y(i-1), x(i), y(i))
+                else
+                    y_value = y(i-1)
+                end if
                 exit
             end if
+            
         end do
     end if
     
@@ -139,13 +134,14 @@ end associate
 end function table_lookup
 
 
-function table_reverse_lookup(table, y_value) result(x_value)
+function table_reverse_lookup(table, y_value, interpolate) result(x_value)
 !====================================================================
 ! Return the x-value associated with a y-value in a table.
 ! Assumes y-entries are either in ascending or descending order.
 !====================================================================
 type(table_t), intent(in) :: table
 real(8),       intent(in) :: y_value
+logical,       intent(in) :: interpolate
 real(8) :: x_value
 integer :: i
 logical :: y_ascending
@@ -174,8 +170,12 @@ associate (size => table%size, &
         end if
         ! bracket lookup y and interpolate
         do i = 2, size
-            if (y_value <= y(i)) then
-                x_value = table_interpolate(y_value, y(i-1), x(i-1), y(i), x(i))
+            if (y_value < y(i)) then
+                if (interpolate == .TRUE.) then
+                    x_value = table_interpolate(y_value, y(i-1), x(i-1), y(i), x(i))
+                else
+                    x_value = x(i-1)
+                end if
                 return
             end if
         end do
@@ -194,8 +194,12 @@ associate (size => table%size, &
         end if
         ! bracket lookup y and interpolate
         do i = 2, size
-            if (y_value >= y(i)) then
-                x_value = table_interpolate(y_value, y(i-1), x(i-1), y(i), x(i))
+            if (y_value > y(i)) then
+                if (interpolate == .TRUE.) then
+                    x_value = table_interpolate(y_value, y(i-1), x(i-1), y(i), x(i))
+                else
+                    x_value = x(i-1)
+                end if
                 return
             end if
         end do
@@ -204,12 +208,13 @@ end associate
 end function table_reverse_lookup
 
 
-function table_tseries_lookup(table, time, extend) result(value)
+function table_tseries_lookup(table, time, interpolate, extend) result(value)
 !====================================================================
 ! Return the value associated with a time in a time series table.
 !====================================================================
 type(table_t),    intent(inout) :: table
 real(8),          intent(in   ) :: time
+logical,          intent(in   ) :: interpolate
 logical,          intent(in   ) :: extend
 real(8) :: value
 integer :: i
@@ -242,11 +247,16 @@ associate (size   => table%size, &
     else if (index == size) then
         value = values(size)
 
-    ! time lies within table, beyond current table index
+    ! time lies within table, at or beyond current table index
     else
         do i = index + 1, size
-            if (time <= times(i)) then
-                value = table_interpolate(time, times(i-1), values(i-1), times(i), values(i))
+            if (time < times(i)) then
+                
+                if (interpolate == .TRUE.) then
+                    value = table_interpolate(time, times(i-1), values(i-1), times(i), values(i))
+                else
+                    value = values(i-1)
+                end if
                 table%index = i - 1;
                 exit
             end if

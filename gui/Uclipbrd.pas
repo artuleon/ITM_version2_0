@@ -3,8 +3,8 @@ unit Uclipbrd;
 {-------------------------------------------------------------------}
 {                    Unit:    Uclipbrd.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/20/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/06/23                              }
 {                                                                   }
 {   Delphi Pascal unit containing procedures that copy and paste    }
 {   data to and from the program's internal clipboard.              }
@@ -45,16 +45,6 @@ begin
     begin
       First := NODE_INVERT_INDEX;
       Last := BOUNDARY_VENTILATED_INDEX;
-    end;
-    GATE:
-    begin
-      First := NODE_INVERT_INDEX;
-      Last := GATE_CONTROL_CURVE_INDEX;
-    end;
-    WEIR:
-    begin
-      First := NODE_INVERT_INDEX;
-      Last := WEIR_RATING_CURVE_INDEX;
     end;
     STORAGE:
     begin

@@ -1,0 +1,581 @@
+{-------------------------------------------------------------------}
+{                    Unit:    Objprops.txt                          }
+{                    Project: ITM                                   }
+{                    Version: 2.0                                   }
+{                    Date:    03/02/23                              }
+{                                                                   }
+{  Constants used with ITM and imported into Uproject.pas.          }
+{-------------------------------------------------------------------}
+
+const
+
+//---------------------------
+// Labels for Project objects
+//---------------------------
+  ObjectLabels: array[0..MAXCLASS] of PChar =
+    ('Title / Notes', 'Option', 'Junction', 'Boundary', 'Storage Unit',
+     'Conduit', 'Pump', 'Orifice', 'Weir', 'Outlet', 'Label', 'Storage Curve',
+     'Pump Curve', 'Rating Curve','Control Curve', 'Time Series'
+    );
+
+//---------------------------
+// Labels for Project options
+//---------------------------
+  OptionLabels: array[0..MAXOPTIONS] of PChar =
+    (
+     'FLOW_UNITS',
+
+     'START_DATE',
+     'START_TIME',
+     'END_DATE',
+     'END_TIME',
+     'REPORT_START_DATE',
+     'REPORT_START_TIME',
+
+     'MAX_NUM_CELLS',
+     'MAX_NUM_PLOT_CELLS',
+
+     'REF_DEPTH_FRACTION',
+     'REPORT_STEP',
+     'MAX_TIME_STEP',
+     'PRESSURIZED_WAVE_CELERITY',
+     'INIT_WATER_ELEVATION',
+
+     'USE_HOTSTART_FILE',
+     'SAVE_HOTSTART_FILE',
+
+     'MIN_NUM_GRIDS',
+     'MAX_NUM_ITERATIONS',
+     'ITM_FLOW_TYPE',
+     'LINK_OFFSETS');
+
+//---------------------------
+// Flow units choices
+//---------------------------
+  FlowUnitsOptions: array[0..5] of PChar =
+    ('CFS', 'GPM', 'MGD', 'CMS', 'LPS', 'MLD');
+
+//---------------------------
+// Link offsets choices
+//---------------------------
+  LinkOffsetsOptions: array[0..1] of PChar =
+    ('DEPTH', 'ELEVATION');
+
+//----------------------------
+// Pump Curve types
+//----------------------------
+  PumpTypes: array[0..3] of PChar =
+    ('TYPE1', 'TYPE2', 'TYPE3', 'TYPE4');
+
+//-----------
+// Weir Types
+//-----------
+  WeirTypes: array[0..3] of PChar =
+    ('TRANSVERSE', 'SIDEFLOW', 'V-NOTCH', 'TRAPEZOIDAL');
+  WeirShapes: array[0..3] of PChar =
+    ('RECT_OPEN', 'RECT_OPEN', 'TRIANGULAR', 'TRAPEZOIDAL');
+
+//---------------------------
+// DWF Pattern types
+//---------------------------
+  PatternTypes: array[0..3] of PChar =
+    ('MONTHLY', 'DAILY', 'HOURLY', 'WEEKEND');
+
+//---------------
+// Map properties
+//---------------
+  MapWords: array[0..1] of PChar =
+    ('DIMENSIONS', 'UNITS');
+
+//------------------------------
+// Map backdrop image properties
+//------------------------------
+  BackdropWords: array[0..4] of PChar =
+    ('FILE','DIMENSIONS','UNITS','OFFSET','SCALING');
+
+//---------------------------
+// Curve Type Options
+//---------------------------
+  CurveTypeOptions: array[0..3] of PChar =
+    ('STORAGE', 'PUMP', 'RATING', 'CONTROL');
+
+//-----------------------------
+// Control Methods
+//-----------------------------
+  ControlMethods: array[0..2] of PChar =
+    ('NONE', 'TIME', 'DEPTH');
+
+//-------------------------------
+// ITM Flow Types
+//--------------------------------
+  ItmFlowTypes: array[0..2] of PChar =
+    ('FREE-SURFACE', 'MIXED-FLOW', 'FULLY-PRESSURIZED');
+
+//--------------------------
+// Months of the Year
+//--------------------------
+  MonthLabels: array[0..12] of PChar =
+    ('All', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
+
+//-----------------------------------------------------------------
+// Project object property lists
+// The fields of a TPropRecord are defined in the PropEdit.pas unit.
+//-----------------------------------------------------------------
+
+  JunctionProps: array [0..10] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'X-Coordinate';      Style:esEdit;      Mask:emNumber;     Length:0),
+     (Name:'Y-Coordinate';      Style:esEdit;      Mask:emNumber;     Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone;       Length:0),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Invert Elev.';      Style:esEdit;      Mask:emNumber;     Length:0),
+     (Name:'Max. Depth';        Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Initial Depth';     Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Inflows';           Style:esButton;    Mask:emNone;       Length:0;),
+     (Name:'Dropshaft';         Style:esComboList; Mask:emNone;       Length:0;
+      List:'YES'#13'NO'),
+     (Name:'Dropshaft Area';    Style:esEdit;      Mask:emPosNumber;  Length:0));
+
+  DefJunction: array [0..10] of String =
+    ('',        //0 - ID
+     '',        //1 - X
+     '',        //2 - Y
+     '',        //3 - Comment
+     '',        //4 - Tag
+     '0',       //5 - Invert
+     '0',       //6 - Max. Depth
+     '0',       //7 - Init. Depth
+     'NO',      //8 - Inflows
+     'YES',     //9 - Dropshaft
+     '0');      //10 - Area
+
+  JunctionHint: array[0..10] of String =
+    ('User-assigned name of junction',
+     'X coordinate of junction on study area map',
+     'Y coordinate of junction on study area map',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Elevation of junction''s invert',
+     'Maximum water depth (i.e., distance from invert to ground surface ',
+     'Initial water depth in junction',
+     'Click to specify external inflows received at the junction',
+     'Select YES if there is a drop shaft or manhole at the node and '+
+     'specify its area',
+     'Area of the node''s drop shaft or manhole opening');
+
+  JunctionPropUnits: array [0..10, 0..1] of String =
+    ( ('',''),
+      ('',''),
+      ('',''),
+      ('',''),
+      ('',''),
+      (' (ft)', ' (m)'),
+      (' (ft)', ' (m)'),
+      (' (ft)', ' (m)'),
+      ('',''),
+      ('', ''),
+      (' (ft2)', ' (m2)'));
+
+  BoundaryProps: array[0..8] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'X-Coordinate';      Style:esEdit;      Mask:emNumber;    Length:0),
+     (Name:'Y-Coordinate';      Style:esEdit;      Mask:emNumber;    Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone;      Length:0),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Invert Elev.';      Style:esEdit;      Mask:emNumber;    Length:0),
+     (Name:'Boundary Type';     Style:esComboList; Mask:emNone;      Length:0;
+      List:'CONST/FLOW'#13'CONST/DEPTH'),
+     (Name:'Boundary Value';    Style:esEdit;      Mask:emNumber;    Length:0),
+     (Name:'Ventilated';        Style:esComboList; Mask:emNoSpace;   Length:0;
+      List:'YES'#13'NO')
+    );
+
+  DefBoundary: array [0..8] of String =
+    ('',         //0 - ID
+     '',         //1 - X
+     '',         //2 - Y
+     '',         //3 - Comment
+     '',         //4 - Tag
+     '0',        //5 - Invert
+     'CONST/FLOW', //6 - Type
+     '0',        //7 - Value
+     'YES');     //8 - Ventilated
+
+  BoundaryHint: array[0..8] of String =
+    ('User-assigned name of boundary node',
+     'X coordinate of boundary node on study area map',
+     'Y coordinate of boundary node on study area map',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Elevation of boundary node''s invert',
+     'Type of boundary: CONST/FLOW for constant flow, CONST/DEPTH for constant depth',
+     'Constant flow (CMS) or depth (m) at the boundary',
+     'Select YES if there is a drop shaft or manhole at the boundary');
+
+  BoundaryPropUnits: array [0..8, 0..1] of String =
+    ( ('',''),
+      ('',''),
+      ('',''),
+      ('',''),
+      ('',''),
+      (' (ft)', ' (m)'),
+      ('', ''),
+      ('', ''),
+      ('', ''));
+
+  StorageProps: array [0..9] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;     Length:0),
+     (Name:'X-Coordinate';      Style:esEdit;      Mask:emNumber;      Length:0),
+     (Name:'Y-Coordinate';      Style:esEdit;      Mask:emNumber;      Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone;        Length:0),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace;     Length:0),
+     (Name:'Invert El.';        Style:esEdit;      Mask:emNumber;      Length:0),
+     (Name:'Max. Depth';        Style:esEdit;      Mask:emPosNumber;   Length:0),
+     (Name:'Initial Depth';     Style:esEdit;      Mask:emPosNumber;   Length:0),
+     (Name:'Storage Curve';     Style:esComboEdit; Mask:emNoSpace;     Length:0;
+      List:''),
+     (Name:'Outflow Rate';      Style:esEdit;      Mask:emPosNumber;   Length:0)
+    );
+
+  DefStorage: array[0..9] of String =
+    ('',           //0 - ID
+     '',           //1 - X
+     '',           //2 - Y
+     '',           //3 - Comment
+     '',           //4 - Tag
+     '0',          //5 - Invert Elev.
+     '5',          //6 - Max. Depth
+     '0',          //7 - Init. Depth
+     '',           //8 - Storage Curve
+     '0'           //9 - Outflow Rate
+    );
+
+  StorageHint: array[0..9] of String =
+    ('User-assigned name of storage node',
+     'X coordinate of storage node on study area map',
+     'Y coordinate of storage node on study area map',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Elevation of the bottom of the storage unit',
+     'Maximum depth of the storage unit',
+     'Initial depth of water in the storage unit',
+     'Name of Storage Curve relating storage volume to depth',
+     'Constant rate of outflow from the unit (CMS)'
+    );
+
+  StoragePropUnits: array [0..9, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''),
+      (' (ft)',' (m)'), (' (ft)',' (m)'), (' (ft)',' (m)'),
+      ('',''), ('','')
+    );
+
+  ConduitProps: array [0..14] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace),
+     (Name:'Diameter';          Style:esEdit;      Mask:emPosNumber),
+     (Name:'Length';            Style:esEdit;      Mask:emPosNumber),
+     (Name:'Manning''s N';      Style:esEdit;      Mask:emPosNumber),
+     (Name:'Inlet Offset';      Style:esEdit;      Mask:emNoSpace),
+     (Name:'Outlet Offset';     Style:esEdit;      Mask:emNoSpace),
+     (Name:'Entry Loss Coeff.'; Style:esEdit;      Mask:emNumber),
+     (Name:'Exit Loss Coeff.';  Style:esEdit;      Mask:emNumber),
+     (Name:'Init. Depth Type';  Style:esComboList; Mask:emNone;       Length:0;
+      List:'CONSTANT'#13'CRITICAL'#13'NORMAL'),
+     (Name:'Init. Depth Value'; Style:esEdit;      Mask:emNumber),
+     (Name:'Init. Flow Rate';   Style:esEdit;      Mask:emNumber)
+     );
+
+  DefConduit: array [0..14] of String =
+    ('',         //0 - ID
+     '',         //1 - Inlet Node
+     '',         //2 - Outlet Node
+     '',         //3 - Comment
+     '',         //4 - Tag
+     '1',        //5 - Diameter
+     '400',      //6 - Length
+     '0.01',     //7 - Roughness
+     '0',        //8 - Inlet Offset
+     '0',        //9 - Outlet Offset
+     '0.5',      //10 - Entry Loss Coeff.
+     '0.5',      //11 - Exit Loss Coeff.
+     'CONSTANT', //12 - Init. Depth Type
+     '0',        //13 - Init. Depth
+     '0');       //14 - Init. Flow
+
+  ConduitHint: array[0..14] of String =
+    ('User-assigned name of Conduit',
+     'Name of node on the inlet end of conduit ',
+     'Name of node on the outlet end of conduit ',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Diameter of conduit''s cross section',
+     'Conduit length',
+     'Manning''s roughness coefficient',
+     'Height of conduit invert above node invert at inlet end',
+     'Height of conduit invert above node invert at outlet end',
+     'Coeff. for energy losses at the conduit''s entrance',
+     'Coeff. for energy losses at the conduit''s exit',
+     'How the initial depth within the conduit will be specified',
+     'Initial water depth for the CONSTANT depth condition',
+     'Initial flow rate in the conduit (must be non-zero if '+
+     'depth condition is CRITICAL or NORMAL)');
+
+  ConduitPropUnits: array [0..14, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), (' (ft)',' (m)'),
+      (' (ft)',' (m)'), ('',''),
+      (' (ft)',' (m)'), (' (ft)',' (m)'), ('',''), ('',''),
+      ('',''), (' (ft)',' (m)'), (' (CFS)',' (CMS)'));
+
+
+  PumpProps: array[0..10] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace),
+     (Name:'Pump Curve';        Style:esComboEdit; Mask:emNoSpace;    Length:0;
+      List:''),
+     (Name:'Piping Diameter';   Style:esEdit;      Mask:emPosNumber),
+     (Name:'Piping Length';     Style:esEdit;      Mask:emPosNumber),
+     (Name:'Friction Factor';   Style:esEdit;      Mask:emPosNumber),
+     (Name:'Local Loss Coeff.'; Style:esEdit;      Mask:emPosNumber),
+     (Name:'Control Method';    Style:esButton;    Mask:emNone;       Length:0));
+
+  DefPump: array [0..10] of String =
+    ('',         //0 - ID
+     '',         //1 - Inlet Node
+     '',         //2 - Outlet Node
+     '',         //3 - Comment
+     '',         //4 - Tag
+     '',         //5 - Pump Curve
+     '',         //6 - Piping Diameter
+     '',         //7 - Piping Length
+     '0.04',     //8 - Friction Factor
+     '0',        //9 - Local Loss Coeff.
+     'NONE');    //10 - Control Method
+
+  PumpHint: array[0..10] of String =
+    ('User-assigned name of Pump',
+     'Name of node on the inlet end of pump ',
+     'Name of node on the outlet end of pump ',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Name of pump''s pump curve (head v. flow)',
+     'Diameter of inlet/outlet piping',
+     'Length of inlet/outlet piping',
+     'Darcy-Weisbach friction factor for inlet/outlet piping',
+     'Local loss coefficient for valves, bends, etc.',
+     'Method used to control the pump''s speed setting');
+
+  PumpPropUnits: array [0..10, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), ('',''),
+      (' (ft)',' (m)'), (' (ft)',' (m)'), ('',''), ('',''),
+      ('',''));
+
+  OrificeProps: array [0..12] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Type';              Style:esComboList; Mask:emNone;       Length:0;
+      List:'SIDE'),
+     (Name:'Shape';             Style:esComboList; Mask:emNone;       Length:0;
+      List:'RECT_CLOSED'),
+     (Name:'Height';            Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Width';             Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Inlet Offset';      Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Discharge Coeff.';  Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Flap Gate';         Style:esComboList; Mask:emNone;       Length:0;
+      List:'NO'#13'YES'),
+     (Name:'Control Method';    Style:esButton;    Mask:emNone;      Length:0)
+    );
+
+  DefOrifice: array[0..12] of String =
+    ('',            //0 - ID
+     '',            //1 - Start node
+     '',            //2 - End node
+     '',            //3 - Comment
+     '',            //4 - Tag
+     'SIDE',        //5 - Type
+     'RECTANGULAR', //6 - Shape
+     '1',           //7 - Height
+     '1',           //8 - Width
+     '0',           //9 - Crest Ht.
+     '0.65',        //10 - Disch. Coeff.
+     'NO',          //11 - Flap Gate
+     'NONE');       //12 - Control Method
+
+  OrificeHint: array[0..12] of String =
+    ('User-assigned name of orifice',
+     'Name of node on the inlet end of orifice',
+     'Name of node on the outlet end of orifice',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Type of orifice',
+     'Orifice shape',
+     'Height of orifice opening when fully open',
+     'Width of orifice opening when fully opened',
+     'Height of bottom of orifice above invert of inlet node',
+     'Discharge coefficient (unitless)',
+     'Select YES if orifice contains a flap gate to prevent backflow',
+     'Method used to control the opening height '+
+      '(as in a lift gate)'
+     );
+
+  OrificePropUnits: array [0..12, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), ('',''), ('',''),
+      (' (ft)',' (m)'), (' (ft)',' (m)'), (' (ft)',' (m)'),
+      ('',''), ('',''), ('','')
+    );
+
+   WeirProps: array [0..12] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace),
+     (Name:'Type';              Style:esComboList; Mask:emNone;       Length:0;
+      List:'TRANSVERSE'),
+     (Name:'Height';            Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Length';            Style:esEdit;      Mask:emPosNumber;  Length:0),
+ //    (Name:'Side Slope';        Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Inlet Offset';      Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Discharge Coeff.';  Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'End Contractions';  Style:esComboList; Mask:emNone;       Length:0;
+      List:'0'#13'1'#13'2'),
+//     (Name:'End Coeff.';        Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Can Surcharge';     Style:esComboList; Mask:emNone;       Length:0;
+      List:'NO'#13'YES'),
+     (Name:'Control Method';    Style:esButton;    Mask:emNone;      Length:0)
+    );
+
+  DefWeir: array [0..12] of String =
+    ('',            //0 - ID
+     '',            //1 - Start node
+     '',            //2 - End node
+     '',            //3 - Comment
+     '',            //4 - Tag
+     'TRANSVERSE',  //5 - Type
+     '1',           //6 - Height
+     '1',           //7 - Width
+   //'0',           //8 - Side Slope
+     '0',           //8 - Crest Height
+     '1.84',        //9 - Disch. Coeff.
+   //'NO',          //11 - Flap Gate
+     '0',           //10 - End Contractions
+   //'1.4',         //13 - End Disch. Coeff.
+     'YES',         //11 - Can Surcharge
+     'NONE');       //12 - Control Method
+
+  WeirHint: array[0..12] of String =
+    ('User-assigned name of weir',
+     'Name of node on the inlet end of weir',
+     'Name of node on the outlet end of weir',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Type of weir',
+     'Vertical height of weir opening',
+     'Horizontal length of weir crest (or crown for V-NOTCH weir)',
+ //  'Slope (width-to-height) of TRAPEZOIDAL weir side walls',
+     'Height of bottom of weir opening from invert of inlet node',
+     'Discharge coefficient for central portion of weir',
+ //  'Select YES if weir contains a flap gate to prevent backflow',
+     'Number of end contractions',
+ //  'Discharge coefficient for flow through the triangular ends of a TRAPEZOIDAL weir',
+     'Select YES if weir can surcharge',
+     'Method used to control the height of the weir opening ' +
+     '(as in a lift gate)');
+
+  WeirPropUnits: array [0..12, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), ('',''),
+      (' (ft)',' (m)'), (' (ft)',' (m)'), //('',''),
+      (' (ft)',' (m)'), (' (CFS)',' (CMS)'), //('',''),
+      ('',''), //(' (CFS)',' (CMS)'),
+      ('',''), ('','') );
+
+  OutletProps: array [0..7] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace),
+     (Name:'Inlet Offset';      Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Flap Gate';         Style:esComboList; Mask:emNone;       Length:0;
+      List:'NO'#13'YES'),
+     (Name:'Rating Curve';      Style:esComboEdit; Mask:emNoSpace;    Length:0;
+      List:'')
+    );
+
+  DefOutlet: array[0..7] of String =
+    ('',            //0 - ID
+     '',            //1 - Start node
+     '',            //2 - End node
+     '',            //3 - Comment
+     '',            //4 - Tag
+     '0',           //5 - Inlet Offset
+     'NO',          //6 - Flap Gate
+     '');           //7 - Rating Curve
+
+  OutletPropUnits: array [0..7, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), (' (ft)',' (m)'),
+      ('',''), ('','')
+    );
+
+  OutletHint: array[0..7] of String =
+    ('User-assigned name of outlet',
+     'Name of node on the inlet end of outlet',
+     'Name of node on the outlet end of outlet',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Height of outlet''s opening above inlet node invert',
+     'Select YES if outlet contains a flap gate to prevent backflow',
+     'Name of rating curve that relates outflow to depth above offset'
+    );
+
+  LabelProps: array [0..4] of TPropRecord =
+   ((Name:'Text';               Style:esEdit;       Mask:emNone),
+    (Name:'X-Coordinate';       Style:esEdit;       Mask:emNumber),
+    (Name:'Y-Coordinate';       Style:esEdit;       Mask:emNumber),
+    (Name:'Anchor Node';        Style:esEdit;       Mask:emNoSpace;  Length:0),
+    (Name:'Font';               Style:esButton;     Mask:emNone));
+
+  LabelHint: array[0..4] of String =
+    ('Text of the label',
+     'X coordinate of upper left corner of the label on the map',
+     'Y coordinate of upper left corner of the label on the map',
+     'Name of a node or subcatchment to which the label is anchored ' +
+     'when map is zoomed (optional)',
+     'Click to edit the label''s font'
+    );
+
+  DefOptions: array [0..MAXOPTIONS] of String =
+    (
+     'CMS',          // 0 - Flow Units
+
+     '',             // 1 - Start Date
+     '',             // 2 - Start Time
+     '',             // 3 - End Date
+     '06:00:00',     // 4 - End Time
+     '',             // 5 - Report Start Date
+     '',             // 6 - Report Start Time
+
+     '100',          // 7 - Maximum Number of Cells
+     '100',          // 8 - Maximum Number of Cells to Plot
+
+     '95',           // 9 - Percent Reference Depth Ratio
+     '60.0',         // 10 - Reporting Time Step
+     '30.0',         // 11 - Max Time Step
+     '200',          // 12 - Pressurized Wave Celerity
+     '',             // 13 - Initial Water Elevation
+     '',             // 14 - Use Hotstart File Name
+     '',             // 15 - Save Hotstart File Name
+     '10',           // 16 - Minimum Number of Cells
+     '100',          // 17 - Maximum Number of Iterations
+     'MIXED-FLOW',   // 18 - Flow Type
+     'DEPTH');       // 19 - Link Offsets
+

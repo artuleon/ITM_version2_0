@@ -3,8 +3,8 @@ unit Uglobals;
 {-------------------------------------------------------------------}
 {                    Unit:    Uglobals.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/19/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/03/23                              }
 {                                                                   }
 {   Delphi Pascal unit that defines all global data types and       }
 {   constants used by ITM.                                          }
@@ -38,8 +38,8 @@ const
 //-----------------------------------------
 // Version ID - range of versions supported
 //-----------------------------------------
-  VERSIONID1 = 15001;
-  VERSIONID2 = 15001;
+  VERSIONID1 = 20000;
+  VERSIONID2 = 20001;
 
 //------------------
 // File names

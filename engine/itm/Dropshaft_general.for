@@ -67,27 +67,18 @@
       Qinflow = (Qinf_old+Qinf_new)/2d0
       Ares = Ares_junct(R)
       
-      !To enforce that the minimum water depth at pond then is ydropmin(R) whene there is no pumps 
-      if (NodeNS(R) == 0)then 
-            if (yres_jun_old(R) < 0d0)then
-                yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-            endif  
-      else
-            if (yres_jun_old(R) < 0d0)then
-                yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-            endif  
-      !      if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
-		    !yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
-      !      endif	         
-      endif       
+      !To enforce that the minimum water depth at pond then is ydropmin(R) (this is zero for pumps and very small for otehr nodes) 
+      if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
+          yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
+      endif
             
       !If there are only pumps connected to the node      
       if (NodeNS(R) == 0)then  !NodeNS(R) = Number of pipes connected to each node     
-          temp3 = (Qinf_new+Qinf_old)/2d0 + PumpFlowToNode(R)
+          temp3 = (Qinf_new+Qinf_old)/2d0 + NonPipeFlowToNode(R)
           yres = yres_jun_old(R) + temp3*dt/Ares
           
           if (yres < 0d0)then
-              PumpFlowToNode(R) = 0
+              NonPipeFlowToNode(R) = 0
               temp3 = (Qinf_new+Qinf_old)/2d0 
               yres = yres_jun_old(R) + temp3*dt/Ares              
               call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes              
@@ -117,7 +108,7 @@
           call endprog; GLOBAL_STATUS_FLAG = 1; return
       Endif	
       
-      temp3 = Qinflow + PumpFlowToNode(R)  !This includes pump flow
+      temp3 = Qinflow + NonPipeFlowToNode(R)  !This includes non-pipe flow
       y_temp_pond = yres_jun_old(R)+temp3*dt/Ares
       call Freesurface_flowregime(R,k,dr,Id11,Idb,Q11,y11,A11,
      &y_temp_pond,FLOW_REGIA1,flowcaseIA1,Nodetype(R,1),cond_mixed,
@@ -159,11 +150,20 @@
 		
 	!To check if we need to solve the equations at the boundary or not
 c     If depths are shallow, solve Riemann problem instead of junction equations	
-      if (max(yL,yR) <= 0.10*yref(k))then !may change here          
+      if (max(yL,yR) <= 0.03*yref(k))then !may change here          
           call Riemann_Mixed_HLL_Leon(k,sum,IDL,IDR,yL,yR,
      &        AL,AR,QL,QR,FF1L,FF1R,FF2L,FF2R,Nodetype(R,1),Qb)
           goto 24
       endif
+      
+         !  if (sum < 2 .and. min(yL,yR)<= 1.01*ydry(k))then !If one of the depths is in dry bed conditions. 
+         !     call Riemann_Mixed_HLL_Leon(k,sum,IDL,IDR,yL,yR,
+         !&        AL,AR,QL,QR,FF1L,FF1R,FF2L,FF2R,Nodetype(R,1),Qb)
+         !     write(98,*),'Riemann_Mixed_HLL solved Subr. Dropshaft_general'
+         !     write(99,*),'Riemann_Mixed_HLL solved Subr. Dropshaft_general'
+         !     call endprog; GLOBAL_STATUS_FLAG = 1; return
+         !     goto 24
+         ! endif
       
 	!solving equations: free surface, pressurized and combined
   	!Pure free surface flow or combined 
@@ -190,19 +190,19 @@ c     If depths are shallow, solve Riemann problem instead of junction equations
 		If(sum == 2)then	
               tol_local = Tol_int_10_6
           elseif(sum == 0)then     
-              if (max(yL,yR) < 0.1*yref(k))then
+              if (max(yL,yR) < 0.05*yref(k))then
                    call Riemann_Mixed_HLL_Leon(k,sum,IDL,IDR,yL,yR,
      &             AL,AR,QL,QR,FF1L,FF1R,FF2L,FF2R,Nodetype(R,1),Qb) 
                    goto 24
               endif
-              tol_local = Tol_int_10_4
+              tol_local = Tol_int_10_5
 		endif
 		
 	    call hybrd1 (dropsh,n,x,fvec,tol_local,info)
 	    call converg (conver_result,info)
           codeconvergence = 0 !0 there is convergence, otherwise no convergence
           if (sum == 0)then
-              if(x(1)>yref(k) .or. x(1)<=ydry(k))codeconvergence=1
+              if(x(1)>yref(k) .or. x(1)<ydry(k))codeconvergence=1
           endif
           
           If(conver_result == 0 .and. codeconvergence == 0)then		
@@ -227,19 +227,21 @@ c             This is to calculate the flow discharge at the boundary. In intern
       elseif (sum == 1)then 
           yb = max(yres_jun_old(R)-dr, ydry(k))
           Qb = 0d0
-          call Area_from_H(k,yb,Ab,Ts,RH,Idb) 
           Min_depth_Posit_interf = max(yb,y11)
-          wtemp3 = (Q11-Qb)/(A11-Ab)	
-          Wpred = abs(wtemp3)*SIGN(1d0,wtemp3)  
           
           
-          !call Area_from_H(k,yb,Ab,Ts,RH,Idb)          
-          !call Pressure_Pho(k,y11,P_pho11,ID11)
-          !call Pressure_Pho(k,yb,P_phob,Idb)
-          !FL2 = Q11*Q11/A11 + P_pho11
-          !FR2 = Qb*Qb/Ab + P_phob
-          !wtemp3 = (FL2 - FR2)/(Q11 - Qb)
-          !Wpred = abs(wtemp3)*SIGN(1d0,wtemp3)
+          !call Area_from_H(k,yb,Ab,Ts,RH,Idb)           
+          !wtemp3 = (Q11-Qb)/(A11-Ab)	
+          !Wpred = abs(wtemp3)*SIGN(1d0,wtemp3)  
+          
+          
+          call Area_from_H(k,yb,Ab,Ts,RH,Idb)          
+          call Pressure_Pho(k,y11,P_pho11,ID11)
+          call Pressure_Pho(k,yb,P_phob,Idb)
+          FL2 = Q11*Q11/A11 + P_pho11
+          FR2 = Qb*Qb/Ab + P_phob
+          wtemp3 = (FL2 - FR2)/(Q11 - Qb)
+          Wpred = abs(wtemp3)*SIGN(1d0,wtemp3)
           
           
           
@@ -284,7 +286,7 @@ c             This is to calculate the flow discharge at the boundary. In intern
           parint1 = k; parint9 = Nodetype(R,1)
           if(Posit_interf == 1)then !Positive interface, flow is from dropshaft to pipe 
               n = 1; x(1) = 0d0
-              tol_local = Tol_int_10_5
+              tol_local = Tol_int_10_4
               call hybrd1 (posit_dropsh_to_pipe,n,x,fvec,tol_local,info)
 	        call converg (conver_result,info)
               If (conver_result == 0)then	
@@ -316,7 +318,7 @@ c             This is to calculate the flow discharge at the boundary. In intern
               endif 
           elseif(Posit_interf == 2)then !Positive interface, flow is from pipe to dropshaft
               n = 2; x(1) = y11; x(2) = 0d0              
-              tol_local = Tol_int_10_5
+              tol_local = Tol_int_10_4
               call hybrd1 (posit_pipe_to_dropsh,n,x,fvec,tol_local,info)
 	        call converg (conver_result,info)
               If (conver_result == 0)then
@@ -341,7 +343,7 @@ c             This is to calculate the flow discharge at the boundary. In intern
       endif      
       
 20    call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-      !write(99,*),'t, Conv. Drops',t_global,sum_no_converg,trim(temp_id)
+      write(99,*),'t, Conv. Drops',t_global,sum_no_converg,trim(temp_id)
       call Riemann_Mixed_HLL_Leon(k,sum,IDL,IDR,yL,yR,
      & AL,AR,QL,QR,FF1L,FF1R,FF2L,FF2R,Nodetype(R,1),Qb) 
       
@@ -355,7 +357,7 @@ c             This is to calculate the flow discharge at the boundary. In intern
           write(99,*),'Nodetype .ne. 1,2. Dropshaft_general'
 		call endprog; GLOBAL_STATUS_FLAG = 1; return
 	Endif 					
-	temp3 = 5d-1*(Qinf_new+Qinf_old) + PumpFlowToNode(R)
+	temp3 = 5d-1*(Qinf_new+Qinf_old) + NonPipeFlowToNode(R)
       yres = yres_jun_old(R) + (temp3+temp1)*dt/Ares
 
 	!Flux computation
@@ -380,6 +382,8 @@ c             This is to calculate the flow discharge at the boundary. In intern
           call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
           write(98,*),'yres is infinity. Dropshaft. Node ',trim(temp_id)
           write(99,*),'yres is infinity. Dropshaft. Node ',trim(temp_id)
+          write(98,*),'Posit_interf = ',Posit_interf
+          write(98,*),'conver_result = ',conver_result
           call endprog; GLOBAL_STATUS_FLAG = 1; return  
       endif 
            
@@ -397,7 +401,7 @@ c             This is to calculate the flow discharge at the boundary. In intern
           call endprog; GLOBAL_STATUS_FLAG = 1; return
 	Endif 
       IDFlow(k,IH) = IDfb_reser
-300   return    
+300   return        
       end
 	
 	!&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -622,8 +626,6 @@ c             This is to calculate the flow discharge at the boundary. In intern
       
       if (yb >= yres-dr)then
           yb = yres - dr; x(1) = 0d0; ub = x(1)
-      elseif  (yb <= ydry(k))then
-          yb = ydry(k); x(1) = 0d0; ub = x(1) !sqrt(2d0*g*(yres - yb))   
       endif
       
       if (yb > yref(k))then

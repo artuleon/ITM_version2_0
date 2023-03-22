@@ -70,21 +70,10 @@
 		call endprog; GLOBAL_STATUS_FLAG = 1; return
       endif  
             
-      Outflow_limited(R) = Reser_outflow(R) !Reservoir outflow. This may be zero for shallow water depths
-      if (NodeNS(R) == 0)then 
-          if (yres_jun_old(R) <= 0d0)then
-              yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-          endif  
-      else
-      !    if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
-		    !yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
-      !    endif	
-          
-          if (yres_jun_old(R) < 0d0)then
-              yres_jun_old(R) = 0d0; Outflow_limited(R) = 0
-          endif  
+      Outflow_limited(R) = Reser_outflow(R) !Reservoir outflow. This may be zero for shallow water depths      
+      if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
+	    yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
       endif
-      
       
       call itm_get_storage(R,yres_jun_old(R),Stora_old) 
       
@@ -93,9 +82,23 @@
           call endprog; GLOBAL_STATUS_FLAG = 1; return
       endif
       
-      !If there are only pumps connected to the reservoir node      
+      !Storage_new = 100000
+      ! call itm_get_storage_depth(R,Storage_new, yres) 
+      !  write(98,*),'Storage_new = 100000 ',yres
+      !
+      !   Storage_new = 200000
+      ! call itm_get_storage_depth(R,Storage_new, yres) 
+      !  write(98,*),'Storage_new = 200000 ',yres
+      !  
+      !  Storage_new = (100000d0+200000d0)/2d0
+      ! call itm_get_storage_depth(R,Storage_new, yres) 
+      !  write(98,*),'Storage_new = (100000d0+200000d0)/2d0 ',yres
+      !  call endprog; GLOBAL_STATUS_FLAG = 1; return         
+      
+      
+      !If there are no pipes connected to the reservoir node      
       if (NodeNS(R) == 0)then  !NodeNS(R) = Number of pipes connected to each node     
-          temp3 = PumpFlowToNode(R) - Outflow_limited(R)
+          temp3 = NonPipeFlowToNode(R) - Outflow_limited(R)
           Storage_new = Stora_old + temp3*dt
           call itm_get_storage_depth(R,Storage_new, yres) 
           
@@ -117,8 +120,8 @@
       endif
       
       !To enforce that the minimum water depth at pond is ydropmin(R). This is not for reservoir with pumps     
-      if (yres_jun_old(R) < 0d0)then
-		yres_jun_old(R) = 0d0
+      if (yres_jun_old(R) < ydropmin(R))then
+		yres_jun_old(R) = ydropmin(R)
           Outflow_limited(R) = 0d0
       endif
       
@@ -199,7 +202,7 @@ c     If depths are shallow, solve Riemann problem instead of junction equations
 
 		!Choosing appropiate tolerance for solving equations
           if (sum == 0 )then
-              tol_local = Tol_int_10_4    
+              tol_local = Tol_int_10_5    
           elseif (sum == 2)then
               tol_local = Tol_int_10_6
           endif
@@ -337,9 +340,9 @@ c     If depths are shallow, solve Riemann problem instead of junction equations
       !Storage equation		
 24	if (Nodetype(R,1) == 2)then !outflowing
 		!sign for Qb is negative for upstream reservoir
-		inflowtemp = (PumpFlowToNode(R)-Qb - Outflow_limited(R))*dt
+		inflowtemp = (NonPipeFlowToNode(R)-Qb - Outflow_limited(R))*dt
 	Elseif (Nodetype(R,1) == 1)then !inflowing	
-		inflowtemp = (PumpFlowToNode(R)+Qb - Outflow_limited(R))*dt 
+		inflowtemp = (NonPipeFlowToNode(R)+Qb - Outflow_limited(R))*dt 
 	else
 		write(98,*),'Nodetype(R,1) .ne. 1,2. Subr. reservoirs'
 		call endprog; GLOBAL_STATUS_FLAG = 1; return
@@ -573,13 +576,13 @@ c     If depths are shallow, solve Riemann problem instead of junction equations
 	call itm_get_storage(R,x(2),Stora_new) 
 	if (Nodetype(R,1) == 2)then !outflowing
 		!sign for x(3) is negative for upstream reservoir
-		res_temp = (-x(3) + PumpFlowToNode(R) - Outflow_limited(R))*dt
+		res_temp = -x(3) + NonPipeFlowToNode(R) - Outflow_limited(R)
 	Elseif (Nodetype(R,1) == 1)then !inflowing
-		res_temp = (x(3)  + PumpFlowToNode(R) - Outflow_limited(R))*dt
+		res_temp = x(3)  + NonPipeFlowToNode(R) - Outflow_limited(R)
 	else
 		write(98,*),'Nodetype(R,1) .ne. 1,2. Subr. reservoir'
 		call endprog; GLOBAL_STATUS_FLAG = 1; return
 	Endif
-	fvec(3) = res_temp - (Stora_new-Stora_old)
+	fvec(3) = res_temp - (Stora_new-Stora_old)/dt
  400	return
       end

@@ -3,8 +3,8 @@ unit Uupdate;
 {-------------------------------------------------------------------}
 {                    Unit:    Uupdate.pas                           }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/20/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/06/23                              }
 {                                                                   }
 {   Delphi Pascal unit that updates references to names of data     }
 {   objects that change during an editing session.                  }
@@ -16,9 +16,6 @@ interface
 uses
   SysUtils, Windows, Forms, Messages, Classes, Math, Controls, Dialogs,
   StrUtils, Uglobals, Uproject, Uutils, Uvertex;
-
-procedure EditGate;
-procedure EditConduit;
 
 procedure RemoveName(const ObjType: Integer; const OldName: String);
 
@@ -55,23 +52,6 @@ const
   MSG_NO_NODE_NAMED = 'There is no node named ';
   MSG_BAD_CONNECTION = 'Node cannot be connected to itself.';
 
-
-procedure EditGate;
-//-----------------------------------------------------------------------------
-//  Re-edits a Gate node after its Control Method property was changed
-//-----------------------------------------------------------------------------
-begin
-  Uedit.EditObject(GATE);
-end;
-
-procedure EditConduit;
-//-----------------------------------------------------------------------------
-//  Re-edits a Pump link after its Control Method property was changed
-//-----------------------------------------------------------------------------
-begin
-  Uedit.EditObject(CONDUIT);
-end;
-
 procedure RemoveName(const ObjType: Integer; const OldName: String);
 //-----------------------------------------------------------------------------
 //  Removes all references to Object of type ObjType with name OldName
@@ -91,18 +71,31 @@ procedure UpdateTseriesName(const OldName: String; const NewName: String);
 var
   I: Integer;
   J: Integer;
+  K: Integer;
+  T: Integer;
   aNode: TNode;
+  aLink: TLink;
 begin
-  for I := JUNCTION to STORAGE do
+  I := JUNCTION;
+  for J := 0 to Project.Lists[I].Count - 1 do
   begin
+    aNode := Project.GetNode(I, J);
+    if SameText(aNode.ExInflow.Tseries, OldName) then
+      aNode.ExInflow.Tseries := NewName;
+  end;
+  for I := PUMP to WEIR do
+  begin
+    case I of
+    PUMP:    K := PUMP_CONTROL_INDEX;
+    ORIFICE: K := ORIFICE_CONTROL_INDEX;
+    WEIR:    K := WEIR_CONTROL_INDEX;
+    end;
     for J := 0 to Project.Lists[I].Count - 1 do
     begin
-      aNode := Project.GetNode(I, J);
-      if (I = JUNCTION) and SameText(aNode.ExInflow.Tseries, OldName) then
-        aNode.ExInflow.Tseries := NewName;
-      if (I = GATE) and SameText(aNode.Data[GATE_TIME_SERIES_INDEX], OldName) then
-        aNode.Data[GATE_TIME_SERIES_INDEX] := NewName;
-
+      aLink := Project.GetLink(I, J);
+      T := K + CTRL_TIME_SERIES_INDEX;
+      if SameText(aLink.Data[T], OldName) then
+        aLink.Data[T] := NewName;
     end;
   end;
 end;
@@ -113,22 +106,15 @@ procedure UpdateCurveName(const OldName: String; const NewName: String);
 //  Replaces all references to Curve OldName with NewName
 //-----------------------------------------------------------------------------
 var
-  J: Integer;
+  I, J, K: Integer;
 begin
-  // Gate headloss curves
-  for J := 0 to Project.Lists[GATE].Count - 1 do
-  begin
-    with Project.GetNode(GATE, J) do
-      if SameText(Data[GATE_HLOSS_CURVE_INDEX], OldName) then
-        Data[GATE_HLOSS_CURVE_INDEX] := NewName;
-  end;
 
-  // Weir rating curves
-  for J := 0 to Project.Lists[WEIR].Count - 1 do
+  // Outlet rating curves
+  for J := 0 to Project.Lists[OUTLET].Count - 1 do
   begin
-    with Project.GetnODE(WEIR, J) do
-      if SameText(Data[WEIR_RATING_CURVE_INDEX], OldName) then
-        Data[WEIR_RATING_CURVE_INDEX] := NewName;
+    with Project.GetLink(OUTLET, J) do
+      if SameText(Data[OUTLET_CURVE_INDEX], OldName) then
+        Data[OUTLET_CURVE_INDEX] := NewName;
   end;
 
   // Storage area curves
@@ -140,32 +126,48 @@ begin
   end;
 
   // Pump curves
-  for J := 0 to Project.Lists[CONDUIT].Count - 1 do
+  for J := 0 to Project.Lists[PUMP].Count - 1 do
   begin
-    with Project.GetLink(CONDUIT, J) do
+    with Project.GetLink(PUMP, J) do
       if SameText(Data[PUMP_CURVE_INDEX], OldName) then
         Data[PUMP_CURVE_INDEX] := NewName;
   end;
 
+  // Control curves
+  for I := PUMP to WEIR do
+  begin
+    case I of
+    PUMP:    K := PUMP_CONTROL_INDEX;
+    ORIFICE: K := ORIFICE_CONTROL_INDEX;
+    WEIR:    K := WEIR_CONTROL_INDEX;
+    end;
+    for J := 0 to Project.Lists[I].Count - 1 do
+      with Project.GetLink(I, J) do
+        if SameText(Data[K + CTRL_CONTROL_CURVE_INDEX], OldName) then
+          Data[K + CTRL_CONTROL_CURVE_INDEX] := NewName;
+  end;
 end;
-
 
 procedure UpdateNodeName(const OldName: String; const NewName: String);
 //-----------------------------------------------------------------------------
 //  Replaces all references to Node OldName with NewName
 //-----------------------------------------------------------------------------
 var
-  J: Integer;
+  I, J, K: Integer;
   S: String;
 begin
   if Length(NewName) = 0 then S := '*' else S := NewName;
-  for J := 0 to Project.Lists[GATE].Count - 1 do
+  for I := PUMP to WEIR do
   begin
-    with Project.GetNode(GATE, J) do
-    begin
-      if SameText(Data[GATE_CONTROL_NODE_INDEX], OldName)
-      then Data[GATE_CONTROL_NODE_INDEX] := S;
+    case I of
+    PUMP:    K := PUMP_CONTROL_INDEX;
+    ORIFICE: K := ORIFICE_CONTROL_INDEX;
+    WEIR:    K := WEIR_CONTROL_INDEX;
     end;
+    for J := 0 to Project.Lists[I].Count - 1 do
+      with Project.GetLink(I, J) do
+        if SameText(Data[K + CTRL_CONTROL_NODE_INDEX], OldName) then
+          Data[K + CTRL_CONTROL_NODE_INDEX] := NewName;
   end;
 end;
 

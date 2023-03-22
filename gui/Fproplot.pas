@@ -3,7 +3,7 @@ unit Fproplot;
 {-------------------------------------------------------------------}
 {                    Unit:    Fproplot.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 5.2                                   }
+{                    Version: 2.0                                   }
 {                    Date:    11/03/22                              }
 {                                                                   }
 {   MDI child form that displays a profile plot.                    }
@@ -705,7 +705,7 @@ begin
       begin
         MessageBox(Self.WindowHandle,
           'GetITMLinkOutVal gave a different pipe ID than requested.',
-          'ERROR', +mb_OK);
+          'ERROR', + mb_OK);
           break;
       end;
     end;
@@ -747,7 +747,8 @@ begin
     end;
 
     // Draw the Hydraulic Grade Line
-    if IncludeHGL then DrawHGL(E1, E2);
+    if (IncludeHGL) and (aLink.Ltype = CONDUIT) then
+      DrawHGL(E1, E2);
   end;
   Chart1.Canvas.Pen.Style := psSolid;
 end;

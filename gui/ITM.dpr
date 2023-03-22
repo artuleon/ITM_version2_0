@@ -71,7 +71,8 @@ uses
   Ustats in 'Ustats.pas',
   itm_api in 'itm_api.pas',
   Dinflow in 'Dinflow.pas' {InflowsForm},
-  itm_export in 'itm_export.pas';
+  itm_export in 'itm_export.pas',
+  Dcontrol in 'Dcontrol.pas' {ControlDataForm};
 
 {$R *.RES}
 

@@ -3,8 +3,8 @@ unit Dsummary;
 {-------------------------------------------------------------------}
 {                    Unit:    Fsummary.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/22/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/04/23                              }
 {                                                                   }
 {   Dialog form that lists the number of each type of ITM object    }
 {   within the current project.                                     }
@@ -42,15 +42,15 @@ const
     (
      ' Junction Nodes         ',
      ' Boundary Nodes         ',
-     ' Gate Nodes             ',
-     ' Weir Nodes             ',
      ' Storage Nodes          ',
      ' Conduit Links          ',
      ' Pump Links             ',
-     ' Head Loss Curves       ',
-     ' Rating Curves          ',
+     ' Orifice Links          ',
+     ' Weir Links             ',
+     ' Outlet Links           ',
      ' Storage Curves         ',
      ' Pump Curves            ',
+     ' Rating Curves          ',
      ' Control Curves         ',
      ' Time Series Inflows    ',
      ' Flow Units             '
@@ -74,15 +74,15 @@ begin
     for I := Low(S) to High(S) do Cells[0,I] := S[I];
     Cells[1,0] := IntToStr(Project.Lists[JUNCTION].Count);
     Cells[1,1] := IntToStr(Project.Lists[BOUNDARY].Count);
-    Cells[1,2] := IntToStr(Project.Lists[GATE].Count);
-    Cells[1,3] := IntToStr(Project.Lists[WEIR].Count);
-    Cells[1,4] := IntToStr(Project.Lists[STORAGE].Count);
-    Cells[1,5] := IntToStr(Project.Lists[CONDUIT].Count);
-    Cells[1,6] := IntToStr(Project.GetPumpCount);
-    Cells[1,7] := IntToStr(Project.Lists[GATECURVE].Count);
-    Cells[1,8] := IntToStr(Project.Lists[RATINGCURVE].Count);
-    Cells[1,9] := IntToStr(Project.Lists[STORAGECURVE].Count);
-    Cells[1,10] := IntToStr(Project.Lists[PUMPCURVE].Count);
+    Cells[1,2] := IntToStr(Project.Lists[STORAGE].Count);
+    Cells[1,3] := IntToStr(Project.Lists[CONDUIT].Count);
+    Cells[1,4] := IntToStr(Project.Lists[PUMP].Count);
+    Cells[1,5] := IntToStr(Project.Lists[ORIFICE].Count);
+    Cells[1,6] := IntToStr(Project.Lists[WEIR].Count);
+    Cells[1,7] := IntToStr(Project.Lists[OUTLET].Count);
+    Cells[1,8] := IntToStr(Project.Lists[STORAGECURVE].Count);
+    Cells[1,9] := IntToStr(Project.Lists[PUMPCURVE].Count);
+    Cells[1,10] := IntToStr(Project.Lists[RATINGCURVE].Count);
     Cells[1,11] := IntToStr(Project.Lists[CONTROLCURVE].Count);
     GetInflowsCount();
     Cells[1,12] := IntToStr(TSFcount);

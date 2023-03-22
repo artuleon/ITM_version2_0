@@ -1,7 +1,7 @@
 object MainForm: TMainForm
   Left = 328
   Top = 128
-  Caption = 'Illinois Transient Model 1.5'
+  Caption = 'Illinois Transient Model 2.0'
   ClientHeight = 656
   ClientWidth = 961
   Color = clBtnFace
@@ -383,29 +383,31 @@ object MainForm: TMainForm
           0000000000010B5400690074006C0065002F004E006F007400650073002C0000
           000100000001000000FFFFFFFFFFFFFFFF00000000000000000000000001074F
           007000740069006F006E007300280000001500000016000000FFFFFFFFFFFFFF
-          FF00000000000000000500000001054E006F006400650073002E0000000C0000
+          FF00000000000000000300000001054E006F006400650073002E0000000C0000
           000C000000FFFFFFFFFFFFFFFF00000000000000000000000001084A0075006E
           006300740069006F006E002E0000000D0000000D000000FFFFFFFFFFFFFFFF00
-          0000000000000000000000010842006F0075006E006400610072007900260000
-          000E0000000E000000FFFFFFFFFFFFFFFF000000000000000000000000010447
-          00610074006500260000000F0000000F000000FFFFFFFFFFFFFFFF0000000000
-          00000000000000010457006500690072002C0000001000000010000000FFFFFF
-          FFFFFFFFFF0000000000000000000000000107530074006F0072006100670065
-          00280000001500000016000000FFFFFFFFFFFFFFFF0000000000000000010000
-          0001054C0069006E006B0073002C0000001000000010000000FFFFFFFFFFFFFF
-          FF000000000000000000000000010743006F006E0064007500690074002A0000
-          000600000006000000FFFFFFFFFFFFFFFF000000000000000005000000010643
-          0075007200760065007300260000001500000016000000FFFFFFFFFFFFFFFF00
-          0000000000000000000000010447006100740065002A00000015000000160000
-          00FFFFFFFFFFFFFFFF000000000000000000000000010652006100740069006E
-          0067002C0000001500000016000000FFFFFFFFFFFFFFFF000000000000000000
-          0000000107530074006F007200610067006500260000001500000016000000FF
-          FFFFFFFFFFFFFF0000000000000000000000000104500075006D0070002C0000
-          000000000000000000FFFFFFFFFFFFFFFF000000000000000000000000010743
-          006F006E00740072006F006C00340000000700000007000000FFFFFFFFFFFFFF
-          FF000000000000000000000000010B540069006D006500200053006500720069
-          0065007300320000000900000009000000FFFFFFFFFFFFFFFF00000000000000
-          0000000000010A4D006100700020004C006100620065006C007300}
+          0000000000000000000000010842006F0075006E0064006100720079002C0000
+          001000000010000000FFFFFFFFFFFFFFFF000000000000000000000000010753
+          0074006F007200610067006500280000001500000016000000FFFFFFFFFFFFFF
+          FF00000000000000000500000001054C0069006E006B0073002C000000100000
+          0010000000FFFFFFFFFFFFFFFF000000000000000000000000010743006F006E
+          006400750069007400260000000000000000000000FFFFFFFFFFFFFFFF000000
+          0000000000000000000104500075006D0070002C0000000000000000000000FF
+          FFFFFFFFFFFFFF00000000000000000000000001074F00720069006600690063
+          006500260000000000000000000000FFFFFFFFFFFFFFFF000000000000000000
+          000000010457006500690072002A0000000000000000000000FFFFFFFFFFFFFF
+          FF00000000000000000000000001064F00750074006C00650074002A00000006
+          00000006000000FFFFFFFFFFFFFFFF0000000000000000040000000106430075
+          0072007600650073002C0000001500000016000000FFFFFFFFFFFFFFFF000000
+          0000000000000000000107530074006F00720061006700650026000000150000
+          0016000000FFFFFFFFFFFFFFFF0000000000000000000000000104500075006D
+          0070002A0000001500000016000000FFFFFFFFFFFFFFFF000000000000000000
+          000000010652006100740069006E0067002C0000000000000000000000FFFFFF
+          FFFFFFFFFF000000000000000000000000010743006F006E00740072006F006C
+          00340000000700000007000000FFFFFFFFFFFFFFFF0000000000000000000000
+          00010B540069006D006500200053006500720069006500730032000000090000
+          0009000000FFFFFFFFFFFFFFFF000000000000000000000000010A4D00610070
+          0020004C006100620065006C007300}
       end
     end
     object BrowserMapPage: TTabSheet
@@ -1003,37 +1005,9 @@ object MainForm: TMainForm
         Tag = 4
         Left = 641
         Top = 0
-        Hint = 'Add a gate node'
-        AllowAllUp = True
-        Caption = 'ObjButton3'
-        Grouped = True
-        ImageIndex = 30
-        ImageName = 'ObjectToolbar\Item31'
-        ParentShowHint = False
-        ShowHint = True
-        OnClick = ObjButtonClick
-      end
-      object ObjButton4: TToolButton
-        Tag = 5
-        Left = 664
-        Top = 0
-        Hint = 'Add an weir node'
-        AllowAllUp = True
-        Caption = 'ObjButton4'
-        Grouped = True
-        ImageIndex = 35
-        ImageName = 'ObjectToolbar\Item36'
-        ParentShowHint = False
-        ShowHint = True
-        OnClick = ObjButtonClick
-      end
-      object ObjButton5: TToolButton
-        Tag = 6
-        Left = 687
-        Top = 0
         Hint = 'Add a storage node'
         AllowAllUp = True
-        Caption = 'ObjButton5'
+        Caption = 'ObjButton3'
         Grouped = True
         ImageIndex = 31
         ImageName = 'ObjectToolbar\Item32'
@@ -1042,20 +1016,20 @@ object MainForm: TMainForm
         OnClick = ObjButtonClick
       end
       object Sep6: TToolButton
-        Left = 710
+        Left = 664
         Top = 0
         Width = 8
         Caption = 'Sep6'
         ImageIndex = 38
         Style = tbsSeparator
       end
-      object ObjButton6: TToolButton
-        Tag = 7
-        Left = 718
+      object ObjButton4: TToolButton
+        Tag = 5
+        Left = 672
         Top = 0
         Hint = 'Add a conduit link'
         AllowAllUp = True
-        Caption = 'ObjButton6'
+        Caption = 'ObjButton4'
         Grouped = True
         ImageIndex = 32
         ImageName = 'ObjectToolbar\Item33'
@@ -1063,26 +1037,74 @@ object MainForm: TMainForm
         ShowHint = True
         OnClick = ObjButtonClick
       end
-      object Sep7: TToolButton
+      object ObjButton5: TToolButton
+        Tag = 6
+        Left = 695
+        Top = 0
+        Hint = 'Add a pump link'
+        AllowAllUp = True
+        Caption = 'ObjButton5'
+        Grouped = True
+        ImageIndex = 33
+        ImageName = 'ObjectToolbar\Item34'
+        ParentShowHint = False
+        ShowHint = True
+        OnClick = ObjButtonClick
+      end
+      object ObjButton6: TToolButton
+        Tag = 7
+        Left = 718
+        Top = 0
+        Hint = 'Add an orifice link'
+        AllowAllUp = True
+        Caption = 'ObjButton6'
+        Grouped = True
+        ImageIndex = 34
+        ImageName = 'ObjectToolbar\Item35'
+        ParentShowHint = False
+        ShowHint = True
+        OnClick = ObjButtonClick
+      end
+      object ObjButton7: TToolButton
+        Tag = 8
         Left = 741
+        Top = 0
+        Hint = 'Add an weir link'
+        AllowAllUp = True
+        Caption = 'ObjButton7'
+        Grouped = True
+        ImageIndex = 35
+        ImageName = 'ObjectToolbar\Item36'
+        ParentShowHint = False
+        ShowHint = True
+        OnClick = ObjButtonClick
+      end
+      object ObjButton8: TToolButton
+        Tag = 9
+        Left = 764
+        Top = 0
+        Hint = 'Add an outlet link'
+        Caption = 'ObjButton8'
+        ImageIndex = 36
+        ImageName = 'ObjectToolbar\Item37'
+        OnClick = ObjButtonClick
+      end
+      object Sep7: TToolButton
+        Left = 787
         Top = 0
         Width = 8
         Caption = 'Sep7'
         ImageIndex = 38
         Style = tbsSeparator
       end
-      object ObjButton8: TToolButton
-        Tag = 8
-        Left = 749
+      object ObjButton9: TToolButton
+        Tag = 10
+        Left = 795
         Top = 0
         Hint = 'Add a map label'
-        AllowAllUp = True
-        Caption = 'ObjButton8'
-        Grouped = True
+        Caption = 'ObjButton9'
         ImageIndex = 37
         ImageName = 'ObjectToolbar\Item38'
-        ParentShowHint = False
-        ShowHint = True
         OnClick = ObjButtonClick
       end
     end

@@ -537,9 +537,8 @@ begin
   if Options.NotationTranspar then SetBkMode(Canvas.Handle, TRANSPARENT);
   LastColorIndex := -999;
   Canvas.Pen.Width := Options.LinkSize;
-  if Options.ShowLinks then
+  if Options.ShowLinks then for I := CONDUIT to OUTLET do
   begin
-    I := CONDUIT;
     for J := 0 to Project.Lists[I].Count - 1 do DrawObject(I, J);
   end;
   Canvas.Pen.Width := 1;
@@ -672,9 +671,7 @@ begin
   if (Options.ShowNodeSymbols) and (ZoomRatio >= Options.SymbolZoom) then
   begin
     if ObjType = STORAGE then DrawStorage(P1.X, P1.Y, Size)
-    else if ObjType = GATE then DrawGate(P1.X, P1.Y, Size)
     else if ObjType = BOUNDARY then DrawBoundary(P1.X, P1.Y, Size)
-    else if ObjType = WEIR then DrawWeir(P1.X, P1.Y, Size)
     else DrawNode(P1.X, P1.Y, Size);
     if Length(Project.GetNode(ObjType, Index).ExInflow.FlowType) > 0 then
       DrawInflowSymbol(P1.X, P1.Y, Size);
@@ -730,10 +727,16 @@ begin
   Canvas.Pen.Color := ForeColor;
 
   // Draw object's symbol & flow direction arrow if called for
-  if ObjType = CONDUIT then
-  begin
-    if (Options.ShowLinkSymbols) and (ZoomRatio >= Options.SymbolZoom) and
-      (L.HasPump = True) then
+  case ObjType of
+  CONDUIT:
+    if (Options.ArrowStyle <> asNone) then
+    begin
+      DrawArrow(L, P1, P2);
+      Offset := Offset + Options.ArrowSize div 2;
+    end;
+
+  PUMP:
+    if (Options.ShowLinkSymbols) and (ZoomRatio >= Options.SymbolZoom) then
     begin
       DrawLinkSymbol(P1, P2, lsPump);
       Offset := Offset + SYMBOLSIZE;
@@ -744,15 +747,27 @@ begin
       Offset := Offset + Options.ArrowSize div 2;
     end;
 
-    // Add link notation if called for
-    if (ZoomRatio >= Options.NotationZoom) then
+  ORIFICE, WEIR, OUTLET:
+    if (Options.ShowLinkSymbols) and (ZoomRatio >= Options.SymbolZoom) then
     begin
-      if (Options.ShowLinkIDs) then
-        DrawLinkIDLabel(ObjType, Index, P1, P2, Offset);
-      if (Options.ShowLinkValues) and (CurrentLinkVar > NOVIEW) then
-         DrawLinkValueLabel(ObjType, Index, P1, P2, Offset,
-           Uoutput.GetLinkValStr(CurrentLinkVar, CurrentPeriod, ObjType, Index));
+      DrawLinkSymbol(P1, P2, lsValve);
+      Offset := Offset + SYMBOLSIZE;
+    end
+    else if (Options.ArrowStyle <> asNone) then
+    begin
+      DrawArrow(L, P1, P2);
+      Offset := Offset + Options.ArrowSize div 2;
     end;
+  end;
+
+  // Add link notation if called for
+  if (ZoomRatio >= Options.NotationZoom) then
+  begin
+    if (Options.ShowLinkIDs) then
+      DrawLinkIDLabel(ObjType, Index, P1, P2, Offset);
+    if (Options.ShowLinkValues) and (CurrentLinkVar > NOVIEW) then
+       DrawLinkValueLabel(ObjType, Index, P1, P2, Offset,
+         Uoutput.GetLinkValStr(CurrentLinkVar, CurrentPeriod, ObjType, Index));
   end;
 end;
 
@@ -982,6 +997,17 @@ begin
       if (Dx >= 0)
       then DrawPumpSymbol(X, Y, Size, 1, Asin, Acos)
       else DrawPumpSymbol(X, Y, Size, -1, Asin, Acos);
+    end;
+
+  lsValve:
+    begin
+      // Draw first half of valve
+      DrawArrowHead(X, Y, asFilled, Size, 1.0, Asin, Acos);
+
+      // Draw second half of valve
+      Asin := -Asin;
+      Acos := -Acos;
+      DrawArrowHead(X, Y, asFilled, Size, 1.0, Asin, Acos);
     end;
 
   end;

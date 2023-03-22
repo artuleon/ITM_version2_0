@@ -48,7 +48,6 @@ object PropEditForm: TPropEditForm
     ParentBackground = False
     ParentCtl3D = False
     TabOrder = 0
-    ExplicitWidth = 200
     object HintLabel: TLabel
       Left = 1
       Top = 1

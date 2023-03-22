@@ -3,8 +3,8 @@ unit Fmain;
 {-------------------------------------------------------------------}
 {                    Unit:    Fmain.pas                             }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/25/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/06/23                              }
 {                                                                   }
 {   Delphi form unit containing the main MDI form for ITM.          }
 {                                                                   }
@@ -56,7 +56,7 @@ const
   MSG_FIND_BACKDROP = '. Do you want to search for it?';
   MSG_NO_LINKS = 'There are no links to analyze.';
 
-  TXT_MAIN_CAPTION = 'Illinois Transient Model 1.5';
+  TXT_MAIN_CAPTION = 'Illinois Transient Model 2.0';
   TXT_STATUS_REPORT = 'Summary Results';
   TXT_SAVE_CHANGES = 'Save changes made to current project?';
   TXT_SAVE_RESULTS = 'Save current simulation results?';
@@ -326,11 +326,11 @@ type
     Sep5: TToolButton;
     ObjButton1: TToolButton;
     ObjButton2: TToolButton;
-    ObjButton4: TToolButton;
-    ObjButton5: TToolButton;
-    ObjButton6: TToolButton;
+    ObjButton7: TToolButton;
     ObjButton3: TToolButton;
-    ObjButton8: TToolButton;
+    ObjButton4: TToolButton;
+    ObjButton6: TToolButton;
+    ObjButton5: TToolButton;
     AnimatorImageList1: TVirtualImageList;
     Sep6: TToolButton;
     Sep7: TToolButton;
@@ -345,6 +345,8 @@ type
     MnuPreferences: TMenuItem;
     ThePrinter: TPrintControl;
     PageSetupDialog: TPageSetupDialog;
+    ObjButton8: TToolButton;
+    ObjButton9: TToolButton;
 
     procedure FormCreate(Sender: TObject);
     procedure FormActivate(Sender: TObject);
@@ -1937,13 +1939,13 @@ procedure TMainForm.BrowserBtnNewClick(Sender: TObject);
 begin
   BrowserBtnNew.Down := True;
   if Uglobals.CurrentList in
-    [JUNCTION..STORAGE, CONDUIT, MAPLABEL]
+    [JUNCTION..STORAGE, CONDUIT..OUTLET, MAPLABEL]
   then
   begin
     case Uglobals.CurrentList of
     JUNCTION..STORAGE: ShowStatusHint(TXT_ADD_NODE);
-    CONDUIT: ShowStatusHint(TXT_ADD_LINK);
-    MAPLABEL: ShowStatusHint(TXT_ADD_LABEL);
+    CONDUIT..OUTLET:   ShowStatusHint(TXT_ADD_LINK);
+    MAPLABEL:          ShowStatusHint(TXT_ADD_LABEL);
     end;
     MapButton1.Down := False;
     MapForm.ToolButtonClick(Uglobals.CurrentList);

@@ -3,8 +3,8 @@ unit Uinifile;
 {-------------------------------------------------------------------}
 {                    Unit:    Uinifile.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/23/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/06/23                              }
 {                                                                   }
 {   Delphi Pascal unit that reads and writes initialization data    }
 {   to the ITM INI file (ITM.ini) and to the current project's      }
@@ -484,10 +484,12 @@ begin
   begin
     Uutils.CopyStringArray(DefJunction,   DefProp[JUNCTION].Data);
     Uutils.CopyStringArray(DefBoundary,   DefProp[BOUNDARY].Data);
-    Uutils.CopyStringArray(DefGate,       DefProp[GATE].Data);
-    Uutils.CopyStringArray(DefWeir,       DefProp[WEIR].Data);
     Uutils.CopyStringArray(DefStorage,    DefProp[STORAGE].Data);
     Uutils.CopyStringArray(DefConduit,    DefProp[CONDUIT].Data);
+    Uutils.CopyStringArray(DefPump,       DefProp[PUMP].Data);
+    Uutils.CopyStringArray(DefOrifice,    DefProp[ORIFICE].Data);
+    Uutils.CopyStringArray(DefWeir,       DefProp[WEIR].Data);
+    Uutils.CopyStringArray(DefOutlet,     DefProp[OUTLET].Data);
     Uutils.CopyStringArray(DefOptions,    DefProp[OPTION].Data);
     Uutils.CopyStringArray(DefProp[OPTION].Data, Options.Data);
   end;

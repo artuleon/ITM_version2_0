@@ -96,10 +96,6 @@ subroutine itm_hotstart_write()
     write(77) Fdownst
     write(77) h0_Rec
 
-    write(77) Cd_gate
-    write(77) Hgate_open
-    write(77) h_gate_m
-    
 end subroutine itm_hotstart_write
 
 
@@ -142,9 +138,6 @@ subroutine itm_hotstart_read
     read(77) Fupst
     read(77) Fdownst
     read(77) h0_Rec
-    read(77) Cd_gate
-    read(77) Hgate_open
-    read(77) h_gate_m
 
 end subroutine itm_hotstart_read
 

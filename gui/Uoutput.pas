@@ -3,8 +3,8 @@ unit Uoutput;
 {-------------------------------------------------------------------}
 {                    Unit:    Uoutput.pas                           }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/25/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/16/23                              }
 {                                                                   }
 {   Delphi Pascal unit used for retrieving output results from      }
 {   a simulation run by ITM.                                        }
@@ -306,7 +306,7 @@ procedure GetBasicOutput;
 var
   I, J, K       : Integer;
   Dummy         : Integer;
-  ReportStep    : Integer;
+  ReportStep    : Double;
   aNode         : TNode;
   aLink         : TLink;
   S             : String;
@@ -332,7 +332,8 @@ begin
   //   Offset2 is # bytes used for output results in each reporting period
   Offset0 := RecordSize * (5 + 4);
   Offset1 := Offset0 + RecordSize *
-             (Nnodes * NumNodeInputs + Nlinks * NumLinkInputs);
+             (Nnodes * NumNodeInputs + Nlinks * NumLinkInputs) +
+             (2 * Sizeof(TDateTime));
   Offset2 := Sizeof(TDateTime) + RecordSize *
              (Nnodes * NumNodeOutputs + Nlinks * NumLinkOutputs);
 
@@ -371,15 +372,18 @@ begin
     end;
   end;
 
-  // For each CONDUIT assign an index into the results array
+  // For each link assign an index into the results array
   K := 0;
-  I := CONDUIT;
+  for I := CONDUIT to OUTLET do
   begin
     for J := 0 to Project.Lists[I].Count - 1 do
     begin
       aLink := Project.GetLink(I, J);
       aLink.Zindex := K;
-      aLink.ITMindex := J;
+      if I = CONDUIT then
+        aLink.ITMindex := J
+      else
+        aLink.ITMindex := -1;
       Inc(K);
     end;
   end;

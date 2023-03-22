@@ -63,11 +63,8 @@
 	!Nodetype = inflowing or outflowing
 
 	!To enforce that the minimum water depth at pond is ydropmin(R)
-	!if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
-	!	yres_jun_old(R) = ydropmin(R)
- !     endif	
-      if (yres_jun_old(R) < 0d0)then !ydropmin(R))then
-		yres_jun_old(R) = 0d0
+	if (yres_jun_old(R) < ydropmin(R))then !ydropmin(R))then
+		yres_jun_old(R) = ydropmin(R)
       endif	
 	
 	tim = tf	
@@ -84,13 +81,7 @@
       endif 
       
 	Qinflow = (Qinf_old+Qinf_new)/2d0 
-      temp3 = Qinflow + PumpFlowToNode(R) !We are adding pump flow to compute the water elevation in the node 
-
-   !   if (abs(PumpFlowToNode(R)) > 0.000001)then
-   !           write(98,*),'pump flow'
-   !           write(99,*),'pump flow'
-			!call endprog; GLOBAL_STATUS_FLAG = 1; return
-   !   endif
+      temp3 = Qinflow + NonPipeFlowToNode(R) !We are non-pipe flow to compute the water elevation in the node 
       
 	IDf1(:) = -1
 	do j = 1, NodeNS(r)
@@ -594,7 +585,8 @@ c     &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
           call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
           write(98,*),'Junction. yres is infin2. Node = ',trim(temp_id)
           write(99,*),'Junction. yres is infin2. Node = ',trim(temp_id)
-          write(98,*),'Qinfl,PumpFlowToNo= ', Qinflow,PumpFlowToNode(R) !We are adding pump flow to compute the water elevation in the node 
+          write(98,*),'Qinfl,NonPipeFlowToNo= ', Qinflow,
+     &        NonPipeFlowToNode(R)
           write(98,*),'Subr. junction_general, Yres= ', yres
           write(98,*),'yres_jun_old(R), temp3 = ',yres_jun_old(R), temp3
           write(98,*),'Qsum, Ares = ',Qsum, Ares  
@@ -1040,8 +1032,8 @@ c     &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
               call endprog; GLOBAL_STATUS_FLAG = 1; return      
           endif 
 	end do
-	temp2 = 5d-1*(Qinf_new+Qinf_old) + PumpFlowToNode(R) 
+	temp2 = 5d-1*(Qinf_new+Qinf_old) + NonPipeFlowToNode(R) 
 	temp4 = (x(n)-yres_jun_old(R))
-      fvec(n) = (temp2+Qsum)*dt - temp4*Ares
+      fvec(n) = temp2 + Qsum - temp4*Ares/dt
 120	continue
       end

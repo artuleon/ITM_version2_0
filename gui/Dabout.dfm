@@ -21,7 +21,7 @@ object AboutBoxForm: TAboutBoxForm
     Width = 22
     Height = 19
     Alignment = taCenter
-    Caption = '1.5'
+    Caption = '2.0'
     Font.Charset = ANSI_CHARSET
     Font.Color = clBlack
     Font.Height = -16

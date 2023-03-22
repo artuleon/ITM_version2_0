@@ -3,8 +3,8 @@ unit Ddefault;
 {-------------------------------------------------------------------}
 {                    Unit:    Ddefault.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/21/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/06/23                              }
 {                                                                   }
 {   Dialog form unit that selects default settings for the current  }
 {   project.                                                        }
@@ -72,14 +72,15 @@ const
 // A TPropRecord record determines how properties are displayed
 // and edited in the PropEdit control (see PropEdit.pas unit).
 
-  PrefixProps: array[0..7] of TPropRecord =
+  PrefixProps: array[0..8] of TPropRecord =
    ((Name:'Junctions';     Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
     (Name:'Boundaries';    Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
-    (Name:'Gates';         Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
-    (Name:'Outlets';       Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
     (Name:'Storage Units'; Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
     (Name:'Conduits';      Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
     (Name:'Pumps';         Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
+    (Name:'Orifices';      Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
+    (Name:'Weirs';         Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
+    (Name:'Outlets';       Style:esEdit;    Mask:emNoSpace;  Length:MAXPREFIX),
     (Name:'ID Increment';  Style:esEdit;    Mask:emPosNumber));
 
   NodeLinkProps: array[0..7] of TPropRecord =
@@ -158,10 +159,12 @@ begin
   0: begin
        PropList[I].Add(Project.IDPrefix[JUNCTION]);
        PropList[I].Add(Project.IDPrefix[BOUNDARY]);
-       PropList[I].Add(Project.IDPrefix[GATE]);
-       PropList[I].Add(Project.IDPrefix[WEIR]);
        PropList[I].Add(Project.IDPrefix[STORAGE]);
        PropList[I].Add(Project.IDPrefix[CONDUIT]);
+       PropList[I].Add(Project.IDPrefix[PUMP]);
+       PropList[I].Add(Project.IDPrefix[ORIFICE]);
+       PropList[I].Add(Project.IDPrefix[WEIR]);
+       PropList[I].Add(Project.IDPrefix[OUTLET]);
        PropList[I].Add(IntToStr(Project.IDIncrement));
      end;
 
@@ -175,9 +178,6 @@ begin
        PropList[I].Add(Project.DefProp[CONDUIT].Data[CONDUIT_ROUGHNESS_INDEX]);
        PropList[I].Add('CMS');
        PropList[I].Add('DEPTH');
-
-//       PropList[I].Add(Project.DefProp[OPTION].Data[FLOW_UNITS_INDEX]);
-//       PropList[I].Add(Project.DefProp[OPTION].Data[LINK_OFFSETS_INDEX]);
      end;
   end;
 end;
@@ -192,11 +192,13 @@ begin
   // ID Prefixes
   Project.IDPrefix[JUNCTION] := PropList[0].Strings[0];
   Project.IDPrefix[BOUNDARY] := PropList[0].Strings[1];
-  Project.IDPrefix[GATE]     := PropList[0].Strings[2];
-  Project.IDPrefix[WEIR]     := PropList[0].Strings[3];
-  Project.IDPrefix[STORAGE]  := PropList[0].Strings[4];
-  Project.IDPrefix[CONDUIT]  := PropList[0].Strings[5];
-  Val(PropList[0].Strings[6], V, Code);
+  Project.IDPrefix[STORAGE]  := PropList[0].Strings[2];
+  Project.IDPrefix[CONDUIT]  := PropList[0].Strings[3];
+  Project.IDPrefix[PUMP]     := PropList[0].Strings[4];
+  Project.IDPrefix[ORIFICE]  := PropList[0].Strings[5];
+  Project.IDPrefix[WEIR]     := PropList[0].Strings[6];
+  Project.IDPrefix[OUTLET]   := PropList[0].Strings[7];
+  Val(PropList[0].Strings[8], V, Code);
   if Code = 0 then
   begin
     if V <= 0 then V := 1;

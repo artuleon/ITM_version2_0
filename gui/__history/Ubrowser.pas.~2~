@@ -1,0 +1,1148 @@
+unit Ubrowser;
+
+{-------------------------------------------------------------------}
+{                    Unit:    Ubrowser.pas                          }
+{                    Project: ITM                                   }
+{                    Version: 2.0                                   }
+{                    Date:    10/20/22                              }
+{                                                                   }
+{   Delphi Pascal unit containing procedures called by event        }
+{   handlers for the Browser panel components of the MainForm.      }
+{-------------------------------------------------------------------}
+
+interface
+
+uses
+ Controls, Classes, SysUtils, Dialogs, Windows, Math,
+ Forms, Graphics, ComCtrls, StrUtils, Uglobals, Uproject, Uutils;
+
+type
+  TStringCompare = function(S1, S2: String): Integer;
+
+procedure AssignOutputUnits;
+
+procedure BrowserAddItem(const ObjType: Integer; const Index: Integer);
+procedure BrowserDeleteObject;
+procedure BrowserEditObject;
+procedure BrowserNewObject;
+procedure BrowserSortObjects;
+procedure BrowserUpdate(const ObjType: Integer; const Index: Integer);
+
+procedure ChangeDate(I: Integer);
+procedure ChangeMapTheme(const I: Integer; const J: Integer);
+procedure ChangeTimePeriod(I: Integer);
+function  ConvertLink(const oldType: Integer; const oldIndex: Integer;
+          const newType: Integer): Integer;
+function  ConvertNode(const oldType: Integer; oldIndex: Integer;
+          const newType: Integer): Integer;
+
+procedure DecreaseElapsedTime;
+procedure DeleteItem(const ObjType: Integer; const Index: Integer);
+
+procedure EnableDateTimeControls(const State: Boolean);
+
+function  GetCurrentPeriod: LongInt;
+function  GetIndexFromObject(const ObjType: Integer): Integer;
+function  GetIndexOfVar(const ObjType: Integer; const S: String): Integer;
+function  GetObjectFromIndex(const Index: Integer): Integer;
+
+procedure IncreaseElapsedTime;
+procedure InitBrowser;
+procedure InitDataPage;
+procedure InitMapPage;
+procedure InitMapViewBoxes;
+
+procedure RefreshObjectImage(const ObjType: Integer; ImageIndex: Integer);
+procedure RefreshMap;
+procedure RefreshMapColors;
+procedure RefreshTimeLegend;
+procedure RefreshTimeListBox(const Backwards: Boolean);
+
+procedure SetBrowserButtons(const ObjType: Integer; const Index: Integer);
+procedure UpdateHasItems(const ObjType: Integer);
+procedure UpdateMapPage;
+procedure UpdateMapViewBoxes;
+
+var
+  CurrentDateIndex: Integer;
+  CurrentTimeIndex: Integer;
+
+implementation
+
+uses
+  Dquery, Dtimeplot, Fmain, Fproped, Fmap, Fovmap, Uedit, Uoutput, Uupdate;
+
+const
+  TXT_DELETE_OBJECT = 'Delete selected object?';
+  TXT_TIME = 'Time';
+  TXT_QUALITY = 'Quality';
+
+var
+  OldNodeVar: Integer;
+  OldLinkVar: Integer;
+
+
+//=============================================================================
+//                         Stringlist Sorting Procedures
+//=============================================================================
+
+function CompareIDStrings(S1, S2: String): Integer;
+//----------------------------------------------------------------------------
+//  Special function used to compare ID strings of two objects. It does
+//  a numerical comparison if both ID's are numbers, otherwise it does
+//  a normal string comparison.
+//----------------------------------------------------------------------------
+var
+  X1, X2: Extended;
+begin
+  if Uutils.GetExtended(S1, X1) and Uutils.GetExtended(S2, X2) then
+  begin
+    if      X1 < X2 then Result := -1
+    else if X1 > X2 then Result := 1
+    else                 Result := 0;
+  end
+  else Result := AnsiCompareText(S1, S2);
+end;
+
+
+procedure ExchangeListItems(Slist: TStringlist; Index1, Index2: Integer);
+//----------------------------------------------------------------------------
+//  Exchanges items at positions Index1 and Index2 in stringlist Slist.
+//----------------------------------------------------------------------------
+var
+  TempObject: TObject;
+  TempString: string;
+begin
+  with Slist do
+  begin
+    BeginUpdate;
+    try
+      TempString := Strings[Index1];
+      TempObject := Objects[Index1];
+      Strings[Index1] := Strings[Index2];
+      Objects[Index1] := Objects[Index2];
+      Strings[Index2] := TempString;
+      Objects[Index2] := TempObject;
+    finally
+      EndUpdate;
+    end;
+  end;
+end;
+
+
+procedure SortStringlist(Slist: TStringlist; L, R: Integer;
+  Compare: TStringCompare);
+//-----------------------------------------------------------------------------
+//  Sorts items in stringlist Slist between indexes L and R using
+//  the user-supplied function Compare as a string comparison function.
+//  Utilizes the QuickSort algorithm recursively, starting with L = 0
+//  and R = Slist.Count-1.
+//-----------------------------------------------------------------------------
+var
+  I, J: Integer;
+  P: String;
+begin
+  repeat
+    I := L;
+    J := R;
+    P := Slist[(L+R) Shr 1];
+    repeat
+      while Compare(Slist[I], P) < 0 do Inc(I);
+      while Compare(Slist[J], P) > 0 do Dec(J);
+      if I <= J then
+      begin
+        ExchangeListItems(Slist, I, J);
+        Inc(I);
+        Dec(J);
+      end;
+    until I > J;
+    if L < J then SortStringList(Slist, L, J, Compare);
+    L := I;
+  until I >= R;
+end;
+
+
+procedure InitBrowser;
+//-----------------------------------------------------------------------------
+//  Initializes contents of the Browser panel
+//-----------------------------------------------------------------------------
+begin
+  //MainForm.ObjectTreeView.Images := nil;
+  CurrentNodeVar := NOVIEW;
+  CurrentLinkVar := NOVIEW;
+  CurrentObject  := -1;
+  InitMapViewBoxes;
+end;
+
+
+//=============================================================================
+//                           Data Page Procedures
+//=============================================================================
+
+procedure InitDataPage;
+//-----------------------------------------------------------------------------
+// Initializes data page of Browser panel to begin a new project.
+//-----------------------------------------------------------------------------
+begin
+  with MainForm do
+  begin
+    Uglobals.CurrentObject := -1;
+    with ObjectTreeView do Selected := Items[0];
+    ItemListBox.Count := 0;
+    ItemListBox.ItemIndex := -1;
+    BrowserBtnNew.Enabled := False;
+    BrowserBtnDelete.Enabled := False;
+    BrowserBtnEdit.Enabled := True;
+  end;
+end;
+
+
+procedure BrowserAddItem(const ObjType: Integer; const Index: Integer);
+//-----------------------------------------------------------------------------
+//  Adds a new item into the Browser panel's ItemListBox display.
+//-----------------------------------------------------------------------------
+begin
+  UpdateHasItems(ObjType);
+  MainForm.SetChangeFlags;
+  if ObjType = Uglobals.CurrentList then
+  begin
+    MainForm.ItemListBox.Count := MainForm.ItemListBox.Count + 1;
+    BrowserUpdate(ObjType, Index);
+    if Project.IsVisual(ObjType) then OVMapForm.NeedsUpdating := True;
+  end
+  else Project.CurrentItem[ObjType] := Index;
+end;
+
+
+procedure BrowserNewObject;
+//-----------------------------------------------------------------------------
+//  Creates a new object in the project's database.
+//-----------------------------------------------------------------------------
+begin
+  MainForm.SelectorButtonClick;
+  Uedit.AddObject(Uglobals.CurrentList);
+end;
+
+
+procedure BrowserDeleteObject;
+//-----------------------------------------------------------------------------
+//  Handles a request to remove a selected item from the project's database.
+//-----------------------------------------------------------------------------
+var
+  I : Integer;
+begin
+  // Activate Select Object toolbar button
+  MainForm.SelectorButtonClick;
+
+  // Make sure there's an object to delete
+  I := Project.CurrentItem[Uglobals.CurrentList];
+  if I < 0 then Exit;
+
+  // Ask for confirmation of deletion
+  if Uglobals.ConfirmDelete then
+  begin
+    if Uutils.MsgDlg(TXT_DELETE_OBJECT,mtConfirmation,[mbYes,mbNo],MainForm)
+     = mrNo then Exit;
+  end;
+  DeleteItem(Uglobals.CurrentList, I);
+  UpdateHasItems(Uglobals.CurrentList);
+end;
+
+
+procedure DeleteItem(const ObjType: Integer; const Index: Integer);
+//-----------------------------------------------------------------------------
+//  Deletes an item from the project's database.
+//-----------------------------------------------------------------------------
+var
+  OldName: String;
+begin
+  // If object is visual, then erase it from the map
+  // (which also deletes it from the database)
+  Oldname := Project.Lists[ObjType].Strings[Index];
+  if Project.IsVisual(ObjType)
+  then MapForm.EraseObject(ObjType, Index)
+
+  // Otherwise delete the non-visual object from database.
+  else Project.DeleteItem(ObjType, Index);
+
+  // Update the Browser's controls
+  BrowserUpdate(ObjType, Project.CurrentItem[ObjType]);
+
+  // Update change flags (SetChangeFlags sees if a new analysis is needed)
+  if ObjType = MAPLABEL then Uglobals.HasChanged := True
+  else MainForm.SetChangeFlags;
+end;
+
+
+procedure BrowserEditObject;
+//-----------------------------------------------------------------------------
+//  Edits the currently selected object in the project's database.
+//-----------------------------------------------------------------------------
+begin
+  MainForm.SelectorButtonClick;
+  Uedit.EditObject(Uglobals.CurrentList);
+end;
+
+
+procedure BrowserSortObjects;
+//-----------------------------------------------------------------------------
+//  Sorts the items in the current object category by ID name.
+//-----------------------------------------------------------------------------
+var
+  S: String;
+  I: Integer;
+begin
+  if Project.IsSortable(Uglobals.CurrentList)
+  then with Project.Lists[Uglobals.CurrentList] do
+  begin
+    I := Project.CurrentItem[Uglobals.CurrentList];
+    S := Strings[I];
+    SortStringList(Project.Lists[Uglobals.CurrentList], 0, Count-1,
+                   CompareIDStrings);
+    I := IndexOf(S);
+    BrowserUpdate(Uglobals.CurrentList, I);
+    MainForm.ItemListBox.Refresh;
+    Uglobals.HasChanged := True;
+  end;
+end;
+
+
+function  GetObjectFromIndex(const Index: Integer): Integer;
+//-----------------------------------------------------------------------------
+//  Gets the index of the Object category that corresponds to the
+//  node selected from the Browser's ObjectTreeView control.
+//-----------------------------------------------------------------------------
+begin
+  case Index of
+    0:  Result := NOTES;
+    1:  Result := OPTION;
+
+    3:  Result := JUNCTION;
+    4:  Result := BOUNDARY;
+    5:  Result := STORAGE;
+
+    7:  Result := CONDUIT;
+    8:  Result := PUMP;
+    9:  Result := ORIFICE;
+    10: Result := WEIR;
+    11: Result := OUTLET;
+
+    13: Result := STORAGECURVE;
+    14: Result := PUMPCURVE;
+    15: Result := RATINGCURVE;
+    16: Result := CONTROLCURVE;
+
+    17: Result := TIMESERIES;
+    18: Result := MAPLABEL;
+
+    else Result := -1;
+  end;
+end;
+
+
+function GetIndexFromObject(const ObjType: Integer): Integer;
+//-----------------------------------------------------------------------------
+//  Gets the index of the node in the Browser's ObjectTreeView control
+//  that corresponds to a particular object category.
+//-----------------------------------------------------------------------------
+begin
+  case ObjType of
+    NOTES:        Result := 0;
+    OPTION:       Result := 1;
+
+    JUNCTION:     Result := 3;
+    BOUNDARY:     Result := 4;
+    STORAGE:      Result := 5;
+
+    CONDUIT:      Result := 7;
+    PUMP:         Result := 8;
+    ORIFICE:      Result := 9;
+    WEIR:         Result := 10;
+    OUTLET:       Result := 11;
+
+    STORAGECURVE: Result := 13;
+    PUMPCURVE:    Result := 14;
+    RATINGCURVE:  Result := 15;
+    CONTROLCURVE: Result := 16;
+
+    TIMESERIES:   Result := 17;
+    MAPLABEL:     Result := 18;
+
+    else          Result := 0;
+  end;
+end;
+
+
+procedure BrowserUpdate(const ObjType: Integer; const Index: Integer);
+//-----------------------------------------------------------------------------
+//  Updates the Browser after a new object has been selected from the
+//  Browser or on the Study Area Map.
+//-----------------------------------------------------------------------------
+var
+  RefreshFlag: Boolean;
+  Caption: String;
+begin
+  // If no object type selected then clear the ItemListBox
+  if ObjType < 0 then
+  begin
+    Uglobals.CurrentObject := ObjType;
+    MainForm.ItemListBox.Count := 0;
+    MainForm.ItemListBox.ItemIndex := -1;
+    SetBrowserButtons(-1, -1);
+    PropEditForm.Hide;
+    MapForm.ChangeHiliteObject(-1, -1);
+    Exit;
+  end;
+
+  // If a new object type has been selected then select its node in the
+  // ObjectTreeView control
+  RefreshFlag := False;
+  if Uglobals.CurrentObject <> ObjType then
+  begin
+    Uglobals.CurrentList := ObjType;
+    RefreshFlag := True;
+    with MainForm.ObjectTreeView do
+    begin
+      Selected := Items[GetIndexFromObject(ObjType)];
+      Caption := Selected.Text;
+      if Project.IsNode(ObjType) then Caption := Caption + ' Nodes'
+      else if Project.IsLink(ObjType) then Caption := Caption + ' Links'
+      else if Project.IsCurve(ObjType) then Caption := Caption + ' Curves';
+      MainForm.ItemsLabel.Caption := Caption;
+    end;
+  end;
+
+  // Select the current item of the current object category in ItemListBox
+  if MainForm.ItemListBox.Count <> Project.Lists[Uglobals.CurrentList].Count
+  then MainForm.ItemListBox.Count := Project.Lists[Uglobals.CurrentList].Count;
+  Project.CurrentItem[Uglobals.CurrentList] := Index;
+  MainForm.ItemListBox.ItemIndex := Index;
+  if RefreshFlag then MainForm.ItemListBox.Refresh;
+
+  // Switch visiblity of NotesMemo & ItemListBox
+  if Uglobals.CurrentList = NOTES then with MainForm.NotesMemo do
+  begin
+    MainForm.ItemListBox.Visible := False;
+    if RefreshFlag then Text := Project.Lists[NOTES].Text;
+    Visible := True;
+  end
+  else
+  begin
+    MainForm.NotesMemo.Visible := False;
+    MainForm.ItemListBox.Visible := True;
+  end;
+
+  // Reset the status of the Browser Buttons
+  SetBrowserButtons(Uglobals.CurrentList, Index);
+
+  // Hide the Property Editor if no visual item was selected
+  if (Index < 0) or not Project.IsVisual(ObjType) then PropEditForm.Hide;
+
+  // Update the Property Editor and highlight the item on the map
+  // if a visual object was selected
+  if Project.IsVisual(ObjType) then
+  begin
+    if Index >= 0 then Uedit.UpdateEditor(ObjType, Index);
+    MapForm.ChangeHiliteObject(ObjType, Index);
+    if TimePlotForm.Visible then TimePlotForm.SetObject;
+  end
+  else MapForm.ChangeHiliteObject(-1, -1);
+  if PropEditForm.Visible then PropEditForm.SetFocus;
+end;
+
+
+procedure SetBrowserButtons(const ObjType: Integer; const Index: Integer);
+//-----------------------------------------------------------------------------
+//  Resets the state of the Browser's speed buttons depending on the
+//  type of object selected.
+//-----------------------------------------------------------------------------
+var
+  Flag: Boolean;
+  S: String;
+begin
+  // Disable New button for link objects if node count < 2
+  Flag := True;
+  if ObjType < 0 then Flag := False
+  else if Project.IsLink(ObjType)
+  and (Project.GetNodeCount < 2)
+  then Flag := False;
+  MainForm.BrowserBtnNew.Enabled := Flag;
+  MainForm.MnuAddObject.Visible := Flag;
+
+  // Disable Edit, Delete, Up, Down & Sort buttons if no items exist
+  if (ObjType < 0) or (MainForm.ItemListBox.Count = 0)
+  then Flag := False
+  else Flag := True;
+  MainForm.BrowserBtnEdit.Enabled := Flag;
+  MainForm.BrowserBtnDelete.Enabled := Flag;
+  MainForm.BrowserBtnUp.Enabled := Flag;
+  MainForm.BrowserBtnDown.Enabled := Flag;
+  MainForm.BrowserBtnSort.Enabled := Flag;
+  MainForm.MnuEditObject.Enabled := Flag;
+  MainForm.MnuDeleteObject.Enabled := Flag;
+  if ObjType < 0 then Exit;
+
+  // Disable Up button if at first item, Down button if at last item
+  if Index = 0 then MainForm.BrowserBtnUp.Enabled := False;
+  if Index = Project.Lists[ObjType].Count-1 then
+    MainForm.BrowserBtnDown.Enabled := False;
+
+  // Disable New button for Labels (they must be added via the Map Toolbar)
+  //if ObjType = MAPLABEL then MainForm.BrowserBtnNew.Enabled := False;
+
+  // Disable New, Delete, Up, Down & Sort buttons for
+  // Notes & Options
+  if ObjType in [NOTES, OPTION] then
+  begin
+    MainForm.BrowserBtnNew.Enabled := False;
+    MainForm.BrowserBtnDelete.Enabled := False;
+    MainForm.BrowserBtnUp.Enabled := False;
+    MainForm.BrowserBtnDown.Enabled := False;
+    MainForm.BrowserBtnSort.Enabled := False;
+    MainForm.BrowserBtnEdit.Enabled := True;
+    MainForm.MnuDeleteObject.Enabled := False;
+    MainForm.MnuAddObject.Visible := False;
+  end;
+  if MainForm.MnuAddObject.Visible then
+  begin
+    S := MainForm.ItemsLabel.Caption;
+    if (S <> 'Time Series') and AnsiEndsStr('s', S)
+    then S := AnsiLeftStr(S, Length(S)-1);
+    MainForm.MnuAddObject.Caption := 'Add a New ' + S;
+  end;
+end;
+
+
+procedure UpdateHasItems(const ObjType: Integer);
+//-----------------------------------------------------------------------------
+//  Updates the HasItems property when an object category gains its
+//  first item or looses its last item.
+//-----------------------------------------------------------------------------
+begin
+  if not Project.HasItems[ObjType]
+  and (Project.Lists[ObjType].Count > 0) then
+  begin
+    Project.HasItems[ObjType] := True;
+  end
+  else if (Project.Lists[ObjType].Count = 0) then
+  begin
+    Project.HasItems[ObjType] := False;
+  end;
+end;
+
+
+procedure RefreshObjectImage(const ObjType: Integer; ImageIndex: Integer);
+//-----------------------------------------------------------------------------
+//  Updates the bitmap image next to a node of the ObjectTreeView control.
+//  (Not currently used.)
+//-----------------------------------------------------------------------------
+var
+  Index: Integer;
+  aNode: TTreeNode;
+  aParent: TTreeNode;
+begin
+  Index := GetIndexFromObject(ObjType);
+  aNode := MainForm.ObjectTreeView.Items[Index];
+  aNode.ImageIndex := ImageIndex;
+  aNode.SelectedIndex := ImageIndex;
+  aParent := aNode.Parent;
+  while aParent <> nil do
+  begin
+    ImageIndex := 0;
+    aNode := aParent.getFirstChild;
+    while aNode <> nil do
+    begin
+      if aNode.ImageIndex = 1 then
+      begin
+        ImageIndex := 1;
+        break;
+      end;
+      aNode := aParent.GetNextChild(aNode);
+    end;
+    aParent.ImageIndex := ImageIndex;
+    aParent.SelectedIndex := ImageIndex;
+    aParent := aParent.Parent;
+  end;
+end;
+
+
+//=============================================================================
+//                           Map Page Procedures
+//=============================================================================
+
+procedure InitMapPage;
+//-----------------------------------------------------------------------------
+//  Initializes the map page prior to running an analysis.
+//-----------------------------------------------------------------------------
+begin
+  // Save current map theme variables
+  OldNodeVar := Uglobals.CurrentNodeVar;
+  OldLinkVar := Uglobals.CurrentLinkVar;
+
+  // Re-initialize the theme selection boxes
+  InitMapViewBoxes;
+
+  // Disable date & time controls
+  EnableDateTimeControls(False);
+  MapForm.TimeLegendPanel.Caption := '';
+  MapForm.TimeLegendBox.Visible := False;
+
+  // Assign units to output view variables
+  AssignOutputUnits;
+
+  // Update the status of the Animator frame
+  MainForm.AnimatorFrame.UpdateStatus;
+  MainForm.AnimatorFrame.Timer.Enabled := False;
+end;
+
+
+procedure InitMapViewBoxes;
+//-----------------------------------------------------------------------------
+//  Initializes the theme selection combo boxes on the map page of Browser.
+//-----------------------------------------------------------------------------
+var
+  I: Integer;
+begin
+  // Fill the NodeViewBox combo box with input variables only
+  with MainForm.NodeViewBox do
+  begin
+    Clear;
+    for I := 0 to NODEOUTVAR1 - 1 do Items.Add(NodeVariable[I].Name);
+    if Uglobals.CurrentNodeVar < Items.Count
+    then ItemIndex := Uglobals.CurrentNodeVar
+    else ItemIndex := 0;
+    Uglobals.CurrentNodeVar := ItemIndex;
+  end;
+
+  // And the same for the Link combo box
+  with MainForm.LinkViewBox do
+  begin
+    Clear;
+    for I := 0 to LINKOUTVAR1 - 1 do Items.Add(LinkVariable[I].Name);
+    if Uglobals.CurrentLinkVar < Items.Count
+    then ItemIndex := Uglobals.CurrentLinkVar
+    else ItemIndex := 0;
+    Uglobals.CurrentLinkVar := ItemIndex;
+  end;
+end;
+
+
+procedure AssignOutputUnits;
+//-----------------------------------------------------------------------------
+//  Assigns measurement units to analysis output variables.
+//-----------------------------------------------------------------------------
+var
+  I: Integer;
+begin
+  for I := NODEOUTVAR1 to NODEVIEWS do
+    Uglobals.NodeUnits[I].Units := Uglobals.BaseNodeUnits[I, UnitSystem];
+  for I := LINKOUTVAR1 to LINKVIEWS do
+    Uglobals.LinkUnits[I].Units := Uglobals.BaseLinkUnits[I, UnitSystem];
+  Uglobals.NodeUnits[LATFLOW].Units := Uglobals.FlowUnits;
+  //Uglobals.NodeUnits[INFLOW].Units := Uglobals.FlowUnits;
+  //Uglobals.NodeUnits[OVERFLOW].Units := Uglobals.FlowUnits;
+  Uglobals.LinkUnits[FLOW].Units := Uglobals.FlowUnits;
+end;
+
+
+procedure UpdateMapViewBoxes;
+//-----------------------------------------------------------------------------
+//  Adds output variables to the theme selection combo boxes after a
+//  successful analysis has been made.
+//-----------------------------------------------------------------------------
+var
+  I: Integer;
+begin
+  with MainForm.NodeViewBox do
+  begin
+    for I := NODEOUTVAR1 to NODEVIEWS do
+      Items.Add(NodeVariable[I].Name);
+    if OldNodeVar < Items.Count
+    then ItemIndex := OldNodeVar
+    else ItemIndex := 0;
+    Uglobals.CurrentNodeVar := ItemIndex;
+  end;
+
+  with MainForm.LinkViewBox do
+  begin
+    for I := LINKOUTVAR1 to LINKVIEWS do
+      Items.Add(LinkVariable[I].Name);
+    if OldLinkVar < Items.Count
+    then ItemIndex := OldLinkVar
+    else ItemIndex := 0;
+    Uglobals.CurrentLinkVar := ItemIndex;
+  end;
+end;
+
+
+procedure ChangeMapTheme(const I: Integer; const J: Integer);
+//-----------------------------------------------------------------------------
+//  Updates the Study Area Map display when a view theme changes.
+//-----------------------------------------------------------------------------
+begin
+  case I of
+  NODES:
+     begin
+       Uglobals.CurrentNodeVar := J;
+       Uoutput.SetNodeColors;
+       MapForm.RedrawMap;
+       MapForm.DrawNodeLegend;
+     end;
+  LINKS:
+     begin
+       Uglobals.CurrentLinkVar := J;
+       if RunFlag then Uoutput.GetFlowDir(Uglobals.CurrentPeriod);
+       Uoutput.SetLinkColors;
+       MapForm.RedrawMap;
+       MapForm.DrawLinkLegend;
+     end;
+  end;
+  MainForm.AnimatorFrame.UpdateStatus;
+end;
+
+
+function  GetIndexOfVar(const ObjType: Integer; const S: String): Integer;
+//-----------------------------------------------------------------------------
+//  Finds the index of a view variable given its name.
+//-----------------------------------------------------------------------------
+begin
+  case ObjType of
+  NODES: Result := MainForm.NodeViewBox.Items.IndexOf(S);
+  LINKS: Result := MainForm.LinkViewBox.Items.IndexOf(S);
+  else Result := -1;
+  end;
+end;
+
+
+function GetCurrentPeriod: LongInt;
+//-----------------------------------------------------------------------------
+//  Finds the current output reporting period from the positions of the
+//  Date & Time scrollbars on the map page of the Browser panel.
+//-----------------------------------------------------------------------------
+var
+  N1: LongInt;
+  T1: TDateTime;
+begin
+  if Uglobals.DeltaDateTime >= 1.0
+  then N1 := CurrentDateIndex
+  else
+  begin
+    T1 := Floor(Uglobals.StartDateTime) + CurrentDateIndex;
+    N1 := Floor((T1 - Uglobals.StartDateTime)/Uglobals.DeltaDateTime);
+    if N1 < 0 then N1 := 0;
+    N1 := N1 + CurrentTimeIndex;
+  end;
+  Uglobals.CurrentDateTime := Uglobals.StartDateTime +
+                              N1*Uglobals.DeltaDateTime;
+  Result := N1;
+end;
+
+
+procedure ChangeDate(I: Integer);
+//----------------------------------------------------------------------------
+//  Sets the position of the DateScrollBar on the map page of
+//  the Browser panel to I.
+//----------------------------------------------------------------------------
+var
+  Backwards: Boolean;
+begin
+  if I <> CurrentDateIndex then
+  begin
+    if I < CurrentDateIndex then Backwards := true else Backwards := false;
+    CurrentDateIndex := I;
+    MainForm.DateScrollBar.Position := CurrentDateIndex;
+    RefreshTimeListBox(Backwards);
+  end;
+end;
+
+
+procedure RefreshTimeListBox(const Backwards: Boolean);
+//-----------------------------------------------------------------------------
+//  Refreshes the entries in the Time of Day listbox on the map page of
+//  the Browser panel when a new date is selected.
+//-----------------------------------------------------------------------------
+var
+  T1: TDateTime;
+  T2: TDateTime;
+  I : Integer;
+  N1: Integer;
+  N2: Integer;
+begin
+  // Special case for reporting periods >= 1 day
+  if Uglobals.DeltaDateTime >= 1.0 then
+  begin
+    N1 := CurrentDateIndex;
+    N2 := N1;
+    T1 := Uglobals.StartDateTime + CurrentdateIndex*Uglobals.DeltaDateTime;
+    T2 := T1 + 1;
+  end
+  else
+  begin
+    // Determine total number of reporting periods up to start of current day
+    T1 := Floor(Uglobals.StartDateTime) + CurrentDateIndex;
+    N1 := Floor((T1 - Uglobals.StartDateTime)/Uglobals.DeltaDateTime);
+    if N1 < 0 then N1 := 0;
+
+    // Determine total number of reporting periods at end of current day
+    T2 := T1 + 1;
+    N2 := Floor((T2 - Uglobals.StartDateTime)/Uglobals.DeltaDateTime) - 1;
+    if N2 >= Nperiods then N2 := Nperiods - 1;
+    if N2 < 0 then N2 := 0;
+  end;
+
+  // With the Time of Day list box
+  with MainForm.TimeListBox.Items do
+  begin
+
+    // Clear its contents and prevent it from redrawing as new items are added
+    Clear;
+    BeginUpdate;
+
+    // For each reporting period that occurs within the current day
+    for I := N1 to N2 do
+    begin
+
+      // Get the date/time value for the reporting period
+      T1 := Uglobals.StartDateTime + I*Uglobals.DeltaDateTime;
+      if (T1 > Uglobals.EndDateTime) or (T1 >= T2) then break;
+
+      // Get the time of day for the date/time and add it to the list box
+//      Add(TimeToStr(T1, MyFormatSettings));
+      Add(FormatDateTime('hh:nn:ss:zzz', T1));
+    end;
+
+    // Allow the list box to refresh itself
+    EndUpdate;
+
+    // Update the max. value of the TimeScrollBar control to correspond
+    // to the number of items in the Time of Day list box
+    MainForm.TimeScrollBar.Max := Count-1;
+  end;
+
+  // Reset the current time of day index to the start of the day if
+  // moving forward in time, or to end of the day if moving backward
+  // in time
+  CurrentTimeIndex := -1;
+  if not Backwards then I := 0
+  else I := MainForm.TimeListBox.Items.Count-1;
+  MainForm.TimeListBox.ItemIndex := I;
+  ChangeTimePeriod(I);
+end;
+
+
+procedure ChangeTimePeriod(I: Integer);
+//----------------------------------------------------------------------------
+//  Resets the curent time of day index when a new reporting time period
+//  is selected.
+//----------------------------------------------------------------------------
+begin
+  if I <> CurrentTimeIndex then
+  begin
+    CurrentTimeIndex := I;
+    MainForm.TimeScrollBar.Position := CurrentTimeIndex;
+    Uglobals.CurrentPeriod := GetCurrentPeriod;
+    RefreshTimeLegend;
+    RefreshMap;
+    MainForm.UpdateProfilePlots;
+  end;
+end;
+
+
+procedure IncreaseElapsedTime;
+//-----------------------------------------------------------------------------
+//  Moves the reporting date/time value to the next reporting period.
+//-----------------------------------------------------------------------------
+begin
+  if Uglobals.CurrentPeriod >= Uglobals.Nperiods-1 then Exit;
+
+  // Increment the time of day index by 1 if not at end of current day
+  if CurrentTimeIndex < MainForm.TimeScrollBar.Max
+  then ChangeTimePeriod(CurrentTimeIndex+1)
+
+  // Otherwise increment the current date index by 1
+  else if CurrentDateIndex < MainForm.DateScrollBar.Max
+  then ChangeDate(CurrentDateIndex+1);
+end;
+
+
+procedure DecreaseElapsedTime;
+//-----------------------------------------------------------------------------
+//  Moves the reporting date/time value to the previous reporting period.
+//-----------------------------------------------------------------------------
+begin
+  if Uglobals.CurrentPeriod <= 0 then Exit;
+
+  // Decrease the time of day index by 1 if not at the start of the day
+  if CurrentTimeIndex > 0 then ChangeTimePeriod(CurrentTimeIndex-1)
+
+  // Otherwise decrease the current date index by 1
+  else if CurrentDateIndex > 0 then ChangeDate(CurrentDateIndex-1);
+end;
+
+
+procedure UpdateMapPage;
+//-----------------------------------------------------------------------------
+//  Refreshes the controls on the Browser's map page after new simulation
+//  run has been made.
+//-----------------------------------------------------------------------------
+var
+  N: Integer;
+  T: TDateTime;
+  Tend: TDateTime;
+begin
+  // Update the Map theme selection controls
+  UpdateMapViewBoxes;
+
+  // Enable the Date/Time controls
+  EnableDateTimeControls(True);
+
+  // Add date labels to the DateListBox
+  T := Floor(Uglobals.StartDateTime);
+  Tend := Floor(Uglobals.EndDateTime);
+  while (T <= Tend) do
+  begin
+    MainForm.DateListBox.Items.Add(DateToStr(T, MyFormatSettings));
+    if Uglobals.DeltaDateTime <= 1.0 then T := T + 1.0
+    else T := T + Uglobals.DeltaDateTime;
+  end;
+  MainForm.DateListBox.ItemIndex := 0;
+
+  // Set the parameters of the DateScrollBar
+  CurrentDateIndex := 0;
+  N := MainForm.DateListBox.Items.Count - 1;
+  if N > 0 then
+  begin
+    MainForm.DateScrollBar.Max := N;
+    MainForm.DateScrollBar.Position := 0;
+  end;
+
+  // Add time period labels to the TimeListBox
+  RefreshTimeListBox(False);
+
+  // Enable the TimeListBox
+  MainForm.TimeScrollBar.Enabled := True;
+  MainForm.TimeListBox.ItemIndex := 0;
+
+  // Display the Time Legend on the study area map
+  Uglobals.CurrentPeriod := 0;
+  RefreshTimeLegend;
+  MapForm.TimeLegendBox.Visible := MapForm.PopupTimeLegend.Checked;
+
+  // Initialize the Animator frame
+  MainForm.AnimatorFrame.UpdateStatus;
+
+  // Update the list of variables that can be queried on the
+  // QueryForm
+  if Assigned(QueryForm) then QueryForm.UpdateVariables;
+end;
+
+
+procedure EnableDateTimeControls(const State: Boolean);
+//-----------------------------------------------------------------------------
+//  Enables/disables the date/time controls on the map page of
+//  the Browser.
+//-----------------------------------------------------------------------------
+begin
+  with MainForm do
+  begin
+    DateLabel.Enabled := State;
+    DateListBox.Clear;
+    DateListBox.Enabled := State;
+    DateScrollBar.Enabled := State;
+    TimeLabel.Enabled := State;
+    TimeListBox.Clear;
+    TimeListBox.Enabled := State;
+    TimeScrollBar.Enabled := State;
+    ElapsedTimeLabel.Enabled := State;
+    ElapsedTimePanel.Enabled := State;
+    ElapsedTimeUpDown.Enabled := State;
+    ElapsedTimePanel.Text := '';
+  end;
+end;
+
+
+procedure RefreshTimeLegend;
+//-----------------------------------------------------------------------------
+//  Refreshes the contents of the Time Legend panel displayed on the
+//  study area map.
+//-----------------------------------------------------------------------------
+var
+  ElapsedTime : TDateTime;
+  ElapsedDays : LongInt;
+  S : String;
+begin
+  try
+    MapForm.TimeLegendPanel.Caption := MainForm.DateListBox.Text + ' ' +
+      MainForm.TimeListBox.Text;
+//    ElapsedTime := (Uglobals.CurrentPeriod + 1) * Uglobals.DeltaDateTime;
+    ElapsedTime := (Uglobals.CurrentPeriod) * Uglobals.DeltaDateTime;
+    ElapsedDays := Floor(ElapsedTime);
+    S := ' ' + IntToStr(ElapsedDays) + '.' +
+//           TimeToStr(ElapsedTime - ElapsedDays, MyFormatSettings);
+             FormatDateTime('hh:nn:ss:zzz', ElapsedTime - ElapsedDays);
+    MainForm.ElapsedTimePanel.Text := S;
+
+  except
+    MapForm.TimeLegendPanel.Caption := '';
+  end;
+end;
+
+
+procedure RefreshMapColors;
+//-----------------------------------------------------------------------------
+//  Refreshes the color coding of objects on the study area map.
+//-----------------------------------------------------------------------------
+begin
+  if OldNodeVar <> Uglobals.CurrentNodeVar
+  then Uoutput.SetNodeColors;
+  if OldLinkVar <> Uglobals.CurrentLinkVar
+  then Uoutput.SetLinkColors;
+end;
+
+
+procedure RefreshMap;
+//-----------------------------------------------------------------------------
+//  Refreshes the study area map display when the time period changes.
+//-----------------------------------------------------------------------------
+var
+  RedrawFlag: Boolean;
+begin
+  // If analysis results are available
+  RedrawFlag := False;
+  if RunFlag then
+  begin
+
+    // Get flow directions
+    Uoutput.GetFlowDir(Uglobals.CurrentPeriod);
+
+    // Update node colors
+    if (Uglobals.CurrentNodeVar >= NODEOUTVAR1) then
+    begin
+      Uoutput.SetNodeColors;
+      RedrawFlag := True;
+    end;
+
+    // Update link colors
+    if (Uglobals.CurrentLinkVar >= LINKOUTVAR1) then
+    begin
+      Uoutput.SetLinkColors;
+      RedrawFlag := True;
+    end;
+
+    // Set RedrawFlag to True if displaying flow arrows
+    if  (MapForm.Map.Options.ArrowStyle <> asNone)
+    and (MapForm.Map.ZoomRatio >= MapForm.Map.Options.ArrowZoom)
+    then RedrawFlag := True;
+  end;
+
+  // Redraw map if required.
+  if RedrawFlag then
+  begin
+    MapForm.RedrawMap;
+    if QueryFlag and Assigned(QueryForm) then QueryForm.UpdateQueryCaption;
+  end;
+end;
+
+
+function ConvertNode(const oldType: Integer; oldIndex: Integer;
+  const newType: Integer): Integer;
+//-----------------------------------------------------------------------------
+//  Converts a node from one type to another.
+//-----------------------------------------------------------------------------
+var
+  oldNode  : TNode;
+  newNode  : TNode;
+  aLink    : TLink;
+  ID       : String;
+  I, J     : Integer;
+  newIndex : Integer;
+begin
+  // Create a new Node of type newType
+  oldNode := Project.GetNode(oldType, oldIndex);
+  ID := Project.Lists[OldType].Strings[oldIndex];
+  newNode := TNode.Create;
+  newNode.Ntype := newType;
+
+  // Copy properties from old Node to new Node
+  newNode.X := oldNode.X;
+  newNode.Y := oldNode.Y;
+  newNode.Zindex := -1;
+  Uutils.CopyStringArray(Project.DefProp[newType].Data, newNode.Data);
+  for I := ID_INDEX to NODE_INVERT_INDEX do newNode.Data[I] := oldNode.Data[I];
+
+  // Replace reference to old Node with new Node in all attached links
+  I := CONDUIT;
+  begin
+    for J := Project.Lists[I].Count-1 downto 0 do
+    begin
+      aLink := Project.GetLink(I, J);
+      if aLink.Node1 = oldNode then aLink.Node1 := newNode;
+      if aLink.Node2 = oldNode then aLink.Node2 := newNode;
+    end;
+  end;
+
+  // Add new node to project
+  Project.Lists[newType].AddObject(ID, newNode);
+  UpdateHasItems(newType);
+
+  // Attach old Node's ID to new Node
+  newIndex := Project.Lists[newType].Count - 1;
+  newNode.ID := PChar(Project.Lists[newType].Strings[newIndex]);
+
+  // Assign the new node a map color
+  newNode.ColorIndex := -1;
+  if (Uglobals.CurrentNodeVar = NOVIEW)
+  or (Uglobals.CurrentNodeVar >= NODEOUTVAR1)
+  then newNode.ColorIndex := -1
+  else Uoutput.SetNodeColor(newNode,
+         NodeVariable[Uglobals.CurrentNodeVar].SourceIndex);
+  MainForm.SetChangeFlags;
+  Result := newIndex;
+end;
+
+
+function ConvertLink(const oldType: Integer; const oldIndex: Integer;
+  const newType: Integer): Integer;
+//-----------------------------------------------------------------------------
+//  Converts a link from one type to another.
+//-----------------------------------------------------------------------------
+var
+  oldLink : TLink;
+  newLink : TLink;
+  ID      : String;
+  I       : Integer;
+  newIndex: Integer;
+begin
+  // Create a new Link of type newType
+  oldLink := Project.GetLink(oldType, oldIndex);
+  ID := Project.Lists[OldType].Strings[oldIndex];
+  newLink := TLink.Create;
+  newLink.Ltype := newType;
+  newLink.Node1 := oldLink.Node1;
+  newLink.Node2 := oldLink.Node2;
+  newLink.Vlist.Assign(oldLink.Vlist);
+  newLink.Zindex := -1;
+
+  Uutils.CopyStringArray(Project.DefProp[newType].Data, newLink.Data);
+  for I := ID_INDEX to TAG_INDEX do newLink.Data[I] := oldLink.Data[I];
+
+  // Add new link to project & delete old one
+  Project.Lists[newType].AddObject(ID, newLink);
+  UpdateHasItems(newType);
+
+  // Attach old Link's ID to new Link
+  newIndex := Project.Lists[newType].Count - 1;
+  newLink.ID := PChar(Project.Lists[newType].Strings[newIndex]);
+
+  // Assign the new link a map color
+  newLink.ColorIndex := -1;
+  if (Uglobals.CurrentLinkVar = NOVIEW)
+  or (Uglobals.CurrentLinkVar >= LINKOUTVAR1)
+  then newLink.ColorIndex := -1
+  else Uoutput.SetLinkColor(newLink,
+         LinkVariable[Uglobals.CurrentLinkVar].SourceIndex);
+  MainForm.SetChangeFlags;
+  Result := newIndex;
+end;
+
+end.

@@ -49,32 +49,29 @@
 	!Volume stored in tunnels
 	sum_temp1 = 0d0
       do j = 1,NR
-          if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)    
+!          if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)    
               do i = 3,Nx(j)-2
                   if (ISNAN(A0(j,i)))then 	
                       call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
-                      write(98,*),'NaN is found in itm_conser_volume'
-                      write(99,*),'NaN is found in itm_conser_volume'
+                      write(98,*),'A0 is NaN. itm_cons. Pipe = ',temp_id
+                      write(99,*),'A0 is NaN. itm_cons. Pipe = ',temp_id
 				    !write(98,*),'Area',A0(j,i),'pipe No',temp_id,'cell',i
 				    call endprog; GLOBAL_STATUS_FLAG = 1; return
                   endif              
                   sum_temp1 = sum_temp1 + A0(j,i)*dx(j)
                   vol_pipes_time_step =vol_pipes_time_step+A0(j,i)*dx(j)
               enddo
-          endif
+!          endif
       enddo	
       
       !Volume stored in dropshafts, junctions and reservoirs
 	sum_temp2 = 0d0; sum_temp3 = 0d0; sum_temp4 = 0d0      
 	do R=1,Nnodes
-          
           If(BCnode(R)==7 .or. BCnode(R)==4 .or. BCnode(R)==20)then 
-              if (ISNAN(yres_jun_old(R)))then              
-                  write(98,*),'NaN is found in subr. itm_conser_volume'
-                  write(99,*),'NaN is found in subr. itm_conser_volume'
-             !         call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-             !         write(98,*),'yres_jun_old(R)',yres_jun_old(R),
-             !&				    'Node No',temp_id
+              if (ISNAN(yres_jun_old(R)))then 
+                  call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes     
+                  write(98,*),'yres is NaN. itm_conser. Node = ',temp_id
+                  write(99,*),'yres is NaN. itm_conser. Node = ',temp_id
                   call endprog; GLOBAL_STATUS_FLAG = 1; return
               endif
           endif
@@ -118,20 +115,11 @@
 			    call itm_get_inflow(R,tf+Dt,Qinf_new)
               else 
                   Qinf_old = 0d0; Qinf_new = 0d0   
-              endif
-              
-              
-	!		Vol_inflows = Vol_inflows + 
-      !&			(Qinf_new+Qinf_old)*Dt/2d0
-              
-              Vol_inflows = Vol_inflows + Qinf_old*Dt
-              vol_inflows_time_step = 
-     &        vol_inflows_time_step + Qinf_old*Dt
-      !&        (Qinf_new+Qinf_old)*Dt/2d0
-              
-      !         vol_inflows_time_step = 
-      !&        vol_inflows_time_step +
-      !&        (Qinf_new+Qinf_old)*Dt/2d0
+              endif              
+			Vol_inflows = Vol_inflows + 
+     &			(Qinf_new+Qinf_old)*Dt/2d0
+              vol_inflows_time_step = vol_inflows_time_step + 
+     &            (Qinf_new+Qinf_old)*Dt/2d0
           endif
          
 				
@@ -172,28 +160,19 @@
               vol_const_bound_time_step = 
      &        vol_const_bound_time_step + Qb*dt
           endif  
-          
-         !         If(BCnode(R) == 11)then 
-         !             Qb = 0d0
-         !             Vol_lost_system = Vol_lost_system + Qb*dt
-         !             vol_const_bound_time_step = 
-         !&            vol_const_bound_time_step + Qb*dt 
-         !         endif	
-          
+                    
 		!Volume lost at reservoirs	!This needs to be updated as in many instances there is no outflow wnen the system is empty
 		If(BCnode(R) == 20)then
 			Vol_lost_system = Vol_lost_system + Outflow_limited(R)*dt    
-              vol_reserv_outflow_time_step=vol_reserv_outflow_time_step
+              vol_reserv_outflow_time_step =vol_reserv_outflow_time_step
      &            + Outflow_limited(R)*dt
 		endif	
       enddo
-           
 	
       vol_lost_time_step = vol_rating_time_step + 
      &        vol_const_bound_time_step + vol_reserv_outflow_time_step
           
-              !Vol_entered_system = Initial_volume_stored + Vol_entered_system 	
-	!Volume error of 5% may be acceptable	
+      !Vol_entered_system = Initial_volume_stored + Vol_entered_system 
       
 !      Error_volume = (Initial_volume_stored+Vol_inflows-Vol_lost_system
 !     & - Volume_stored_current_step)/
