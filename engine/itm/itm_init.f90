@@ -26,7 +26,8 @@
     double precision teta
     double precision P_pho,conver,area,discharge,TH, p1  
     double precision RH,yy,htemp,crown_elev_max
-    double precision Ynormal,Ycrit,Yconjugate,dxtemp,s_temp,ScIA
+    !double precision Ynormal,Ycrit,Yconjugate,
+    double precision dxtemp,s_temp,ScIA
     double precision temp100,temp101,y_temp
     
     Integer Reser_dropsh_ID(1000),hydrog_ID(1000)
@@ -181,7 +182,7 @@
             R = Nnod(i); Node(i,R) = k; Noufl(i) = Noufl(i)+1
             NodeID(i,R) = Node(i,R)
             Nodetype(i,R) = 2 !outflowing            
-            R = Noufl(i); 
+            R = Noufl(i)
             !oufl(i,R)=k 
             Klocal(R,1) = EntranceLoss(k) !Entrance losses
             
@@ -324,7 +325,6 @@ do R =1,Nnodes
             endif 
         endif        
     enddo
-enddo 
    
     do j=1,NodeNS(R) !For rating curve
         if (BCnode(R) == 30)then
@@ -429,27 +429,25 @@ do R =1,Nnodes
     endif 
 enddo
     
-    !Pipe slopes
-    do j=1,NR   
-        S0(j) = (zb(j,1) - zb(j,2))/Length(j)            
-        call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
-        WRITE(99,'(A5, F16.8)'),trim(temp_id),S0(j)             
+!Pipe slopes
+do j=1,NR   
+    S0(j) = (zb(j,1) - zb(j,2))/Length(j)            
+    call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
+    WRITE(99,'(A5, F16.8)'),trim(temp_id),S0(j)             
             
-            if (S0(j) < 0d0)then  !Negative slope
-                call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
-                write(99,*),'pipe ID = ',temp_id,'slope = ',S0(j)
-                write(99,*),'Pipe slope must be zero or positive' 
-                    write(99,*),'Upstream node must have higher elevation'
-                write(99,*),'Change direction of flow'                  
-                    write(98,*),'pipe ID = ',temp_id,'slope = ',S0(j)
-                write(98,*),'Pipe slope must be positive' 
-                    write(98,*),'Upstream node must have higher elevation'
-                write(98,*),'Change direction of flow'
-                call endprog; GLOBAL_STATUS_FLAG = 1; return
-            endif 
-
-        endif
-    enddo
+    if (S0(j) < 0d0)then  !Negative slope
+        call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
+        write(99,*),'pipe ID = ',temp_id,'slope = ',S0(j)
+        write(99,*),'Pipe slope must be zero or positive' 
+            write(99,*),'Upstream node must have higher elevation'
+        write(99,*),'Change direction of flow'                  
+            write(98,*),'pipe ID = ',temp_id,'slope = ',S0(j)
+        write(98,*),'Pipe slope must be positive' 
+            write(98,*),'Upstream node must have higher elevation'
+        write(98,*),'Change direction of flow'
+        call endprog; GLOBAL_STATUS_FLAG = 1; return
+    endif 
+enddo
       
     !Dry bed and free surface and pressurized flow limits
     dry_diam_fraction_min = 500d0 !1000 works very well  
@@ -705,10 +703,11 @@ do R =1,Nnodes
         j = NonPipeNodeID(R,i) !Pipe ID with pump
         call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
         call itm_get_swmm_id(1, j, temp_id2) ! 1 for pipes
- !       WRITE(98,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NonPipeNodeType(R,i)
+        WRITE(98,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NonPipeNodeType(R,i)
         WRITE(99,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NonPipeNodeType(R,i)
-
-write(99,*)'Node  Pipe  NodetypePump' 
+        write(99,*)'Node  Pipe  NodetypePump' 
+    enddo
+enddo
 
 do R =1,Nnodes    
     do i = 1,  NPipes_At_Node_with_Pumps(R)    
@@ -719,12 +718,11 @@ do R =1,Nnodes
         WRITE(99,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NodetypePump(R,i)
     enddo
 enddo
-
 write(99,*)'_____________________________________________________' 
     
       
     do R =1,Nnodes                  
-        if (BCnode(R) == 4.or. BCnode(R)==7)then
+        if (BCnode(R) == 4 .or. BCnode(R)==7)then
             if (Ares_junct(R) >= 100000.5)then !(100^2)  If Area is larger use a reservoir boundary
                 call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
                 write(98,*),'Area of node ',temp_id
@@ -1158,7 +1156,7 @@ enddo
         If(BCnode(R) == 20)then
             call itm_get_storage(R,yres_jun_old(R),Stora_new)
             sum_temp3 = sum_temp3 + Stora_new   
-          endif
+        endif
         
         If(BCnode(R) == 30)then
             p1 = abs(Drop(R,1)) !Drop height 

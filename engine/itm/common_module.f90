@@ -246,6 +246,11 @@ implicit none
   integer, ALLOCATABLE :: NodeID(:,:)	
   integer, ALLOCATABLE :: Nodetype(:,:)
   
+  !For pumps
+    integer, ALLOCATABLE :: NodePumpID(:,:)	
+    integer, ALLOCATABLE :: NodetypePump(:,:)
+  
+  
 ! Parameters air pocket
 ! air pressure head expressed in equivalent water head
   double precision, ALLOCATABLE :: ha(:,:) 
@@ -293,7 +298,8 @@ implicit none
 
 !## Junction
   integer,          ALLOCATABLE :: Junct(:,:)
-  integer,          ALLOCATABLE :: max_crown_pipe(:)	
+  integer,          ALLOCATABLE :: max_crown_pipe(:)
+  integer,          ALLOCATABLE :: NPipes_At_Node_with_Pumps(:)
   double precision, ALLOCATABLE :: Drop(:,:)
   double precision, ALLOCATABLE :: Ares_junct(:)
   double precision, ALLOCATABLE :: yres_jun_old(:)	
@@ -397,6 +403,18 @@ implicit none
   integer SUM_VAR
   integer sum_no_converg
   double precision, ALLOCATABLE :: Klocal(:,:)
+  
+  
+! Rating curve
+  ! Maximum flow specified at the rating curve. This is used to check if the
+  ! water level in the rating curve is exceeded. 
+  double precision, ALLOCATABLE :: Max_flow_rating_curve(:) 
+  double precision, ALLOCATABLE :: Max_Head_rating_curve(:) 
+      
+! Cross-section area of weir (bottom to weir crest). 
+  double precision, ALLOCATABLE :: area_weir(:) 
+  
+  
 
 ! Volume check       
   double precision vol_reserv_outflow_time_step
