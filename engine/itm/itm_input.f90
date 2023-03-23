@@ -629,7 +629,7 @@ integer :: i, c, j
     do i = 1, Npumps
         c = pumps(i)%pump_curve        
         pumps(i)%max_head = table_lookup(curve(c), 0d0, .TRUE.)
-        pumps(i)%max_flow = table_get_x_max(curve(c))        
+        pumps(i)%max_flow = table_get_x_max(curve(c))          
     end do
     
 end subroutine set_pump_limits

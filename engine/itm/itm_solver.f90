@@ -158,6 +158,7 @@ character(IDLEN) :: temp_id
                 IdFlow1(i) = 0
                 cycle
             end if                             
+            end if 
                       
             if (Atemp1(i) < Aref(j)) then
                 IdFlow1(i) = 0
@@ -184,6 +185,30 @@ character(IDLEN) :: temp_id
         utemp = dabs(Qtemp1(i) / Atemp1(i))
         
         If (ISNAN(utemp)) then   
+            call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
+            write(99,*),'NaN is found in utemp. itm_solver. Pipe No',j,'cell=',i
+            write(98,*),'NaN is found in utemp. itm_solver. Pipe No',j,'cell=',i
+            utemp = 0d0;  Qtemp1(i) = 0d0
+            call endprog; GLOBAL_STATUS_FLAG = 1; return  
+        endif
+        
+        
+        if (IdFlow1(i) == 0) then
+            if (htemp1(i) < 0.05*yref(j) .or.   htemp1(i) < 0.03) then 
+                if (utemp > 2d0) then
+                    utemp = 2d0 * SIGN(1d0, Qtemp1(i))
+                    Qtemp1(i) = utemp * Atemp1(i)
+                endif 
+            endif
+        endif
+            
+        
+        if (utemp > 40d0) then
+            utemp = 40d0 * SIGN(1d0, Qtemp1(i))
+            Qtemp1(i) = utemp * Atemp1(i)
+        endif
+                  
+        If (ISNAN(htemp1(i)) .or. ISNAN(Qtemp1(i))) then 
             call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
             write(99,*),'NaN is found in utemp. itm_solver. Pipe No',j,'cell=',i
             write(98,*),'NaN is found in utemp. itm_solver. Pipe No',j,'cell=',i

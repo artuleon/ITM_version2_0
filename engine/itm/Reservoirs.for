@@ -97,6 +97,8 @@
       
       
       !If there are no pipes connected to the reservoir node      
+ 
+      !If there are no pipes connected to the reservoir node  ()
       if (NodeNS(R) == 0)then  !NodeNS(R) = Number of pipes connected to each node     
           temp3 = NonPipeFlowToNode(R) - Outflow_limited(R)
           Storage_new = Stora_old + temp3*dt

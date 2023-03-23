@@ -95,6 +95,8 @@ c     !Check if there is enough data in rating_curve
                   write(99,*),'Unknown Nodetype(R,1). Subr. Rating'
 				call endprog; GLOBAL_STATUS_FLAG = 1; return
 			Endif               
+              Endif  
+              yb = 0d0
               goto 20
           endif   
       endif
@@ -226,6 +228,7 @@ c     !Check if there is enough data in rating_curve
 	
 	!Water level over the weir or spillway crest       
       yres_jun_old(R) = y11
+      yres_jun_old(R) = yb
 20    return
       end
 

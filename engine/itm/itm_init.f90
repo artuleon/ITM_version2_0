@@ -27,6 +27,7 @@
     double precision P_pho,conver,area,discharge,TH, p1  
     double precision RH,yy,htemp,crown_elev_max
     double precision dxtemp,s_temp,ScIA    
+    double precision Ynormal,Ycrit,Yconjugate,dxtemp,s_temp,ScIA
     double precision temp100,temp101,y_temp
     
     Integer Reser_dropsh_ID(1000),hydrog_ID(1000)
@@ -35,6 +36,10 @@
     double precision Q2,dh1,dh2,A,Ts,dmin,Amin,temcel,Vmin,Qb,Dt
     double precision sum_temp1,sum_temp2,sum_temp3,Stora_new 
     double precision dx1max, dx2max,dx3max,drop_min,tempvar
+    !**** Added to common_module, allocated in project.f90
+    !Integer Init_depth_type(1000)
+    !double precision Init_disch(1000),Init_depth(1000)
+    !****************************************************
     Integer R1,R2
     double precision Drop1,Drop2,P_phoIA,h0b1,A0b1,value_reser
     double precision temp1,temp2,temp3,temp4,dz,teta1,teta2
@@ -240,6 +245,7 @@
         num_cells_drop =delta_depth/min_depth
           
 <<<<<<< Updated upstream
+        num_cells_drop =delta_depth/min_depth  
         Nx(j) = max(Int(Length(j)/dxtemp),Int(num_cells_drop+1))
         Dx(j) = Length(j)/Nx(j) 
         maxi = max(NX(j),maxi) 
@@ -328,8 +334,26 @@ do R =1,Nnodes
             endif 
         endif        
     enddo
+enddo 
+   
+    do j=1,NodeNS(R) !For rating curve
+        if (BCnode(R) == 30)then
+            Drop(R,1) = weir_invert(R) - junct_elev(R)            
+            call itm_get_Q_from_rat_curve(R,abs(Drop(R,1)),QL)	
+            call itm_get_Q_from_rat_curve(R,abs(1.05*Drop(R,1)),QR)	
+            if (dabs(QL) > 0.001 .or. dabs(QL-QR) < Tol_int_10_14)then
+                call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
+                write(98,*),'Weir height in node ',trim(temp_id), ' is (m): ', abs(Drop(R,1)),' , but'
+                write(98,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
+                write(99,*),'Weir height in node ',trim(temp_id), ' is (m) ', abs(Drop(R,1)),' , but'
+                write(99,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
+                call endprog; GLOBAL_STATUS_FLAG = 1; return
+            endif
+        endif
+    enddo
 enddo     
     
+ 
 ! Change the name of boundaries for dropshafts, junctions and reservoirs if a pump is connected to the node
 do R =1,Nnodes 
     if (BCnode(R) == 4 .or. BCnode(R) == 7 .or. BCnode(R) == 20)then !Only for dropshafts, junctions and reservoirs              
@@ -433,6 +457,8 @@ enddo
                 write(98,*),'Change direction of flow'
                 call endprog; GLOBAL_STATUS_FLAG = 1; return
             endif 
+
+        endif
     enddo
       
     !Dry bed and free surface and pressurized flow limits
@@ -681,6 +707,7 @@ do R =1,Nnodes
     !write(99,*),'R,max_elev_crown (R)',R,max_elev_crown (R)
 enddo   
 write(99,*)'_____________________________________________________' 
+
 write(99,*)'Node  Pipe  NonPipeNodeType' 
 
 do R =1,Nnodes    
@@ -690,6 +717,16 @@ do R =1,Nnodes
         call itm_get_swmm_id(1, j, temp_id2) ! 1 for pipes
  !       WRITE(98,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NonPipeNodeType(R,i)
         WRITE(99,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NonPipeNodeType(R,i)
+
+write(99,*)'Node  Pipe  NodetypePump' 
+
+do R =1,Nnodes    
+    do i = 1,  NPipes_At_Node_with_Pumps(R)    
+        j = NodePumpID(R,i) !Pipe ID with pump
+        call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
+        call itm_get_swmm_id(1, j, temp_id2) ! 1 for pipes
+        WRITE(98,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NodetypePump(R,i)
+        WRITE(99,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NodetypePump(R,i)
     enddo
 enddo
 
@@ -1133,7 +1170,47 @@ enddo
             sum_temp3 = sum_temp3 + Stora_new   
           endif
         
-      enddo
+        If(BCnode(R) == 30)then
+            p1 = abs(Drop(R,1)) !Drop height 
+            j = NodeID(R,1) !Pipe Id of weir
+            call Area_from_H(j,p1,area,TH,RH,0)
+            area_weir(R) =  area             
+            
+            !call itm_get_Q_from_rat_curve(R,p1,Qb)
+            !if(abs(Qb) > Qmin(1)) then 
+            !    temp_id = ''
+            !    call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes           
+            !    write(98,*),'There is a rating curve at node  ', trim(temp_id), ','
+            !    write(98,*),'which has a weir of depth of p1 =', p1,'m, '
+            !    write(98,*),'but, get_Q_from_rat_curve(R,p1,Qb) gives'
+            !    write(98,*),'a flow discharge (Qb [m3/s]) > 0 for water depths'
+            !    write(98,*),'smaller than p1. Qb [m3/s] =',Qb
+            !    write(98,*),'Check rating curve at node',trim(temp_id)
+            !    write(99,*),'There is a rating curve at node  ', trim(temp_id), ','
+            !    write(99,*),'which has a weir of depth of p1 =', p1,'m, '
+            !    write(99,*),'but, get_Q_from_rat_curve(R,p1,Qb) gives'
+            !    write(99,*),'a flow discharge (Qb [m3/s])>0 for water depths'
+            !    write(99,*),'smaller than p1. Qb [m3/s] =',Qb
+            !    write(99,*),'Check rating curve at node',trim(temp_id)
+            !    call endprog; GLOBAL_STATUS_FLAG = 1; return  
+            !endif
+            !!Maximum flow specified at the rating curve. This is used to check if the water level in the rating curve is exceeded. 
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            temp100 = 10.**14.
+            call itm_get_Q_from_rat_curve(R,temp100,Qb)         
+            Max_flow_rating_curve(R) = abs(Qb)
+            call itm_get_max_rating_head(R,Max_Head_rating_curve(R))
+            If (Max_Head_rating_curve(R) < (yref(j)-p1))then
+                  temp_id = ''
+                  call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes 
+                  write(98,*),'No enough data in rat.curve.Node ', trim(temp_id)
+                  write(98,*),'Extend rating curve for this node until water level over the weir reaches the pipe crown'
+                  write(99,*),'No enough data in rat.curve.Node ', trim(temp_id)                  
+                  write(99,*),'Extend rating curve for this node until water level over the weir reaches the pipe crown'
+                  call endprog; GLOBAL_STATUS_FLAG = 1; return  
+            endif
+        endif 
+    enddo
       write(99,*)'_____________________________________________________' 
 
     Initial_volume_stored = sum_temp1 + sum_temp2 + sum_temp3

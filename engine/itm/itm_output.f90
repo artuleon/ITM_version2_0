@@ -215,6 +215,10 @@ real(8) :: flow, depth, veloc, froude
         flow = Q0(j, cell) 
         depth = h0(j, cell)
         veloc = flow / A0(j, cell)
+        depth =  h0(j, cell) !min(h0(j, cell), d(j)) !This is not the minimum of ho and D. The pressure head to plot on the time seris should be this. 
+        !Otherwise we need to distinguis between pressure head and depth
+        !veloc = abs(Q0(j, cell) / A0(j, cell))
+        veloc = Q0(j, cell) / A0(j, cell)
         froude = abs(veloc) / sqrt(g * A0(j, cell) / get_surface_width(j, cell))
     end if
    
