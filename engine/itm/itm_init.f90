@@ -239,14 +239,26 @@
         delta_depth= max(1d-12,delta_depth)
         num_cells_drop =delta_depth/min_depth
           
+<<<<<<< Updated upstream
         Nx(j) = max(Int(Length(j)/dxtemp),Int(num_cells_drop+1))
         Dx(j) = Length(j)/Nx(j) 
         maxi = max(NX(j),maxi) 
+=======
+            Nx(j) = max(Int(Length(j)/dxtemp),Int(num_cells_drop+1))
+            
+            !Nx(1) = 2000 !delete this
+            !Nx(2) = 2000 !delete this
+            Dx(j) = Length(j)/Nx(j) 
+            maxi = max(NX(j),maxi) 
+>>>>>>> Stashed changes
           
         temp_id = ''
         call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes   
         WRITE(99,'(A5, F6.1)'), trim(temp_id), Dx(j)
     enddo
+    !WRITE(98,*),'NX9(1)', NX(1)
+    !call endprog; GLOBAL_STATUS_FLAG = 1; return
+    
     maxi = maxi + 4 !4(to make second order the numerical scheme)      
     write(99,*),'Minimum Dx(j) = ', MINVAL(Dx(:))
     write(99,*)'_____________________________________________________' 
@@ -971,6 +983,30 @@ enddo
     endif
     
     
+    
+     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
+    !For ITM paper Problem 1     
+    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+    !write(98,*),'STOP'
+    !write(98,*),'Nx(1) -2',Nx(1) -2
+    !write(98,*),'Nx(2) -2',Nx(2) -2
+    !call endprog; GLOBAL_STATUS_FLAG = 1; return
+    !j = 1    
+    !do i = 3,Nx(j)-2            
+    !    if (i > 300)then
+    !        h0(j,i) = 1.00001*yref(j) 
+    !        Q0(j,i) = 0d0
+    !    endif 
+    !enddo
+    !
+    !j = 2    
+    !do i = 3,Nx(j)-2            
+    !    if (i > 300)then
+    !        h0(j,i) = 1.00001*yref(j) 
+    !        Q0(j,i) = 0d0
+    !    endif 
+    !enddo
+    
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
     !To determine if the flow is free surface or pressurized    
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
@@ -998,7 +1034,7 @@ enddo
                         h0Cent(j,i) = h0(j,i)     
                         h0Sur(j,i) = 0    
                 elseif (h0(j,i) > yref(j))then
-                    IdFlow(j,i) = 1 !pressurized flow
+                        IdFlow(j,i) = 1 !pressurized flow
                         h0Cent(j,i) = h0(j,i)
                         h0Sur(j,i) = 0    
                     !Area is computed below according with pc1
