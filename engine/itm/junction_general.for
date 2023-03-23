@@ -81,7 +81,7 @@
       endif 
       
 	Qinflow = (Qinf_old+Qinf_new)/2d0 
-      temp3 = Qinflow + NonPipeFlowToNode(R) !We are non-pipe flow to compute the water elevation in the node 
+      temp3 = Qinflow + NonPipeFlowToNode(R) !We are adding non-pipe flow to compute the water elevation in the node 
       
 	IDf1(:) = -1
 	do j = 1, NodeNS(r)

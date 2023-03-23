@@ -95,8 +95,6 @@
       !  write(98,*),'Storage_new = (100000d0+200000d0)/2d0 ',yres
       !  call endprog; GLOBAL_STATUS_FLAG = 1; return         
       
-      
-      !If there are no pipes connected to the reservoir node      
  
       !If there are no pipes connected to the reservoir node  ()
       if (NodeNS(R) == 0)then  !NodeNS(R) = Number of pipes connected to each node     

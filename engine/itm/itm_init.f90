@@ -26,7 +26,6 @@
     double precision teta
     double precision P_pho,conver,area,discharge,TH, p1  
     double precision RH,yy,htemp,crown_elev_max
-    double precision dxtemp,s_temp,ScIA    
     double precision Ynormal,Ycrit,Yconjugate,dxtemp,s_temp,ScIA
     double precision temp100,temp101,y_temp
     
@@ -242,21 +241,12 @@
     do j=1,NR
         delta_depth= dabs(zb(j,1) - zb(j,2)) 
         delta_depth= max(1d-12,delta_depth)
-        num_cells_drop =delta_depth/min_depth
-          
-<<<<<<< Updated upstream
         num_cells_drop =delta_depth/min_depth  
         Nx(j) = max(Int(Length(j)/dxtemp),Int(num_cells_drop+1))
-        Dx(j) = Length(j)/Nx(j) 
-        maxi = max(NX(j),maxi) 
-=======
-            Nx(j) = max(Int(Length(j)/dxtemp),Int(num_cells_drop+1))
-            
             !Nx(1) = 2000 !delete this
             !Nx(2) = 2000 !delete this
             Dx(j) = Length(j)/Nx(j) 
             maxi = max(NX(j),maxi) 
->>>>>>> Stashed changes
           
         temp_id = ''
         call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes   

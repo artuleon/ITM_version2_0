@@ -71,7 +71,6 @@ real(8) :: flow
         NonPipeFlowToNode(j) = NonPipeFlowToNode(j) + flow
     end do
 end subroutine find_nonpipe_flows
-    
 
 subroutine find_pipe_flows()
 !====================================================================
@@ -151,13 +150,12 @@ character(IDLEN) :: temp_id
         end if
                   
         if (IdFlow(j,i) == 0) then 
-            if (Atemp1(i) <= 1.001*Adry(j)) then     
+            if (Atemp1(i) <= 1.0001*Adry(j)) then     
                 Atemp1(i) = Adry(j)
                 htemp1(i) = ydry(j)
                 Qtemp1(i) = 0d0
                 IdFlow1(i) = 0
                 cycle
-            end if                             
             end if 
                       
             if (Atemp1(i) < Aref(j)) then
