@@ -78,7 +78,7 @@ uses
 begin
   Application.Initialize;
   Application.MainFormOnTaskBar := True; // added for MDI app
-  Application.Title := 'ITM 1.5';
+  Application.Title := 'ITM 2.0';
   Application.HelpFile := '';
   Application.CreateForm(TMainForm, MainForm);
   Application.CreateForm(TFindForm, FindForm);

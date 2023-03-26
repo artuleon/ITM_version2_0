@@ -3,8 +3,8 @@ unit Fproped;
 {-------------------------------------------------------------------}
 {                    Unit:    Fproped.pas                           }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/25/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/03/23                              }
 {                                                                   }
 {   Form unit that is a container for a TPropEdit component.        }
 {   This component serves as the Property  Editor for data          }
@@ -35,13 +35,11 @@ type
     { Private declarations }
     procedure CallHelp;
     procedure EditCurve(const ObjType: Integer; var S: String);
-    procedure EditTimeSeries(var S: String);
     procedure Validate(Sender: TObject; Index: Integer; var S: String;
       var Errmsg: String; var IsValid: Boolean);
     procedure ButtonClick(Sender: TObject; Index: Integer;
       var S: String; var Modified: Boolean);
     procedure UpdateCurveLists;
-    procedure UpdateTimeseriesLists;
     procedure ShowPropertyHint(Sender: TObject; aRow: LongInt);
   public
     { Public declarations }
@@ -155,8 +153,8 @@ begin
   else if (CurrentList = STORAGE) and (Index = STORAGE_SHAPE_TABLE_INDEX)
   then EditCurve(STORAGECURVE, S)
 
-  // User wants to edit an Outfall's rating curve
-  else if (CurrentList = WEIR) and (Index = WEIR_RATING_CURVE_INDEX)
+  // User wants to edit an Outlet's rating curve
+  else if (CurrentList = OUTLET) and (Index = OUTLET_CURVE_INDEX)
   then EditCurve(RATINGCURVE, S)
 
   // User wants to edit a label's font
@@ -237,48 +235,18 @@ begin
   end;
 end;
 
-procedure TPropEditForm.EditTimeSeries(var S: String);
-//-----------------------------------------------------------------------------
-// Edits a TimeSeries object with ID name S.
-//-----------------------------------------------------------------------------
-var
-  I: Integer;
-  S1: String;
-begin
-  I := Project.Lists[TIMESERIES].IndexOf(S);
-  S1 := Uedit.EditTimeseries(I);
-  if Length(S1) > 0 then
-  begin
-    S := S1;
-    UpdateTimeseriesLists;
-  end;
-end;
-
 procedure TPropEditForm.UpdateCurveLists;
 //-----------------------------------------------------------------------------
 // Updates the list of curve names that appear in the editor.
 //-----------------------------------------------------------------------------
 begin
   case CurrentList of
-  GATE:
-    GateProps[GATE_HLOSS_CURVE_INDEX].List := Project.Lists[GATE_CURVE].Text;
   STORAGE:
     StorageProps[STORAGE_SHAPE_TABLE_INDEX].List := Project.Lists[STORAGECURVE].Text;
-  WEIR:
-    WeirProps[WEIR_RATING_CURVE_INDEX].List := Project.Lists[RATINGCURVE].Text;
-  end;
-end;
-
-procedure TPropEditForm.UpdateTimeseriesLists;
-//-----------------------------------------------------------------------------
-// Updates the list of time series names that appear in the editor.
-//-----------------------------------------------------------------------------
-var
-  S: String;
-begin
-  S := Project.Lists[TIMESERIES].Text;
-  case CurrentList of
-  GATE:  GateProps[GATE_TIME_SERIES_INDEX].List := S;
+  PUMP:
+    PumpProps[PUMP_CURVE_INDEX].List := Project.Lists[PUMPCURVE].Text;
+  OUTLET:
+    OutletProps[OUTLET_CURVE_INDEX].List := Project.Lists[RATINGCURVE].Text;
   end;
 end;
 
@@ -293,10 +261,12 @@ begin
   case CurrentList of
   JUNCTION: S := JunctionHint[aRow] + JunctionPropUnits[aRow][Ord(UnitSystem)];
   BOUNDARY: S := BoundaryHint[aRow] + BoundaryPropUnits[aRow][Ord(UnitSystem)];
-  GATE:     S := GateHint[aRow]     + GatePropUnits[aRow][Ord(UnitSystem)];
-  WEIR:     S := WeirHint[aRow]     + WeirPropUnits[aRow][Ord(UnitSystem)];
   STORAGE:  S := StorageHint[aRow]  + StoragePropUnits[aRow][Ord(UnitSystem)];
   CONDUIT:  S := ConduitHint[aRow]  + ConduitPropUnits[aRow][Ord(UnitSystem)];
+  PUMP:     S := PumpHint[aRow]     + PumpPropUnits[aRow][Ord(UnitSystem)];
+  ORIFICE:  S := OrificeHint[aRow]  + OrificePropUnits[aRow][Ord(UnitSystem)];
+  WEIR:     S := WeirHint[aRow]     + WeirPropUnits[aRow][Ord(UnitSystem)];
+  OUTLET:   S := OutletHint[aRow]   + OutletPropUnits[aRow][Ord(UnitSystem)];
   MAPLABEL: S := LabelHint[aRow];
   else S := 'Press F1 for Help';
   end;
@@ -318,7 +288,7 @@ begin
   case CurrentList of
     JUNCTION:   HC := 211480;
     BOUNDARY:   HC := 211500;
-    GATE:       HC := 211510;
+    ORIFICE:    HC := 211510;
     WEIR:       HC := 211560;
     STORAGE:    HC := 211520;
     CONDUIT:    HC := 211530;

@@ -74,11 +74,11 @@
             
       !If there are only pumps connected to the node      
       if (NodeNS(R) == 0)then  !NodeNS(R) = Number of pipes connected to each node     
-          temp3 = (Qinf_new+Qinf_old)/2d0 + PumpFlowToNode(R)
+          temp3 = (Qinf_new+Qinf_old)/2d0 + NonPipeFlowToNode(R)
           yres = yres_jun_old(R) + temp3*dt/Ares
           
           if (yres < 0d0)then
-              PumpFlowToNode(R) = 0
+              NonPipeFlowToNode(R) = 0
               temp3 = (Qinf_new+Qinf_old)/2d0 
               yres = yres_jun_old(R) + temp3*dt/Ares              
               call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes              
@@ -108,7 +108,7 @@
           call endprog; GLOBAL_STATUS_FLAG = 1; return
       Endif	
       
-      temp3 = Qinflow + PumpFlowToNode(R)  !This includes pump flow
+      temp3 = Qinflow + NonPipeFlowToNode(R)  !This includes non-pipe flow
       y_temp_pond = yres_jun_old(R)+temp3*dt/Ares
       call Freesurface_flowregime(R,k,dr,Id11,Idb,Q11,y11,A11,
      &y_temp_pond,FLOW_REGIA1,flowcaseIA1,Nodetype(R,1),cond_mixed,
@@ -357,7 +357,7 @@ c             This is to calculate the flow discharge at the boundary. In intern
           write(99,*),'Nodetype .ne. 1,2. Dropshaft_general'
 		call endprog; GLOBAL_STATUS_FLAG = 1; return
 	Endif 					
-	temp3 = 5d-1*(Qinf_new+Qinf_old) + PumpFlowToNode(R)
+	temp3 = 5d-1*(Qinf_new+Qinf_old) + NonPipeFlowToNode(R)
       yres = yres_jun_old(R) + (temp3+temp1)*dt/Ares
 
 	!Flux computation

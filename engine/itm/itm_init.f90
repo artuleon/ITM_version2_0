@@ -1,30 +1,20 @@
-! This file is part of the ITM model.
-!
-! Copyright 2009 University of Illinois at Urbana-Champaign
-! Copyright 2011 Oregon State University, Corvallis
-!
-! Authors: Arturo S. Leon (Hydraulics), Nils Oberg (User interface)
-!
-! ITM is a free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published
-! by the Free Software Foundation; either version 2.0 of the
-! License, or (at your option) any later version.
-! 
-! This program is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-! 
-! You should have received a copy of the GNU General Public License
-! along with this program; if not, write to the Free Software
-! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-! 02110-1301, USA.
-
+!******************************************************************************
+!Project:      ITM (Illinois Transient Model)
+!Version:      2.0
+!Module:       itm_init
+!Description:  initializes the ITM system
+!Authors:      see AUTHORS
+!Copyright:    see LICENSE
+!License:      see LICENSE
+!Last Updated: 03/20/2023
+!******************************************************************************
+    
     Subroutine Init()
     !## Purpose: Read data and set up constants     
     use common_module
     use itm_accessors
     use itm_allocate
+    use itm_util
     implicit none
     
     integer i,j,k,p,q,Time_hydro
@@ -36,10 +26,8 @@
     double precision teta
     double precision P_pho,conver,area,discharge,TH, p1  
     double precision RH,yy,htemp,crown_elev_max
-    double precision Ynormal,Ycrit,Yconjugate,dxtemp,s_temp,ScIA    
+    double precision dxtemp,s_temp,ScIA    
     double precision temp100,temp101,y_temp
-    !character*200  TITLE, Variab
-    Integer Node(1000,10)
     
     Integer Reser_dropsh_ID(1000),hydrog_ID(1000)
     Integer Pip(1000),nodID(1000)   
@@ -47,10 +35,6 @@
     double precision Q2,dh1,dh2,A,Ts,dmin,Amin,temcel,Vmin,Qb,Dt
     double precision sum_temp1,sum_temp2,sum_temp3,Stora_new 
     double precision dx1max, dx2max,dx3max,drop_min,tempvar
-    !**** Added to common_module, allocated in project.f90
-    !Integer Init_depth_type(1000)
-    !double precision Init_disch(1000),Init_depth(1000)
-    !****************************************************
     Integer R1,R2
     double precision Drop1,Drop2,P_phoIA,h0b1,A0b1,value_reser
     double precision temp1,temp2,temp3,temp4,dz,teta1,teta2
@@ -65,32 +49,17 @@
     double precision Ratio_dry,Interval_dry,y_dry_iterat,A_dry_iterat
     integer j_1,j_2
     character(IDLEN) temp_id,temp_id2    
-    character(IDLEN) temp_gate_id   
     integer sum_drop,sum_drop2
-    integer swmmRes
-    character*1024 swmmMsg
     double precision AreaNodeminimum(Nnodes)
-      NumVolErrPoints = 0
-      numitera = 200   
-      
-  !Remove these variables from ITM Options
-  !     Remove maximum time step
-  !     Remove Maximum Number of Cells
-  !     Remove Maximum number of Iterations for Convergence
-  !     Remove Flow type
-     
-  !   if (itm_check_hotstart_status() == 1) then
-      
-! Removed by LR      
-!      if (len(trim(hsfile_use)) > 0) then
-!        write(99,*),'hotstart file'
-!        DtMax = Min(DtMax1,Tstor,Tmax) !This is important when using hotstart file
-!        return
-!      endif
-      
+    integer Nnod(Nnodes), Ninf(Nnodes), Noufl(Nnodes), Node(Nnodes,10)
+    integer NonPipesAtNode(Nnodes), NonPipeNodeID(Nnodes,10)
+    integer NonPipeNodeType(Nnodes,10)
+    integer Number_of_zero_drops(Nnodes), ID_Number_of_zero_drops(Nnodes,10)
+    
+    numitera = 200   
+            
     ! Allocate general arrays
     call itm_allocate_general()
-    
     
       !Internal Tolerances
       Tol_int_10_1 = 1.d-1
@@ -110,9 +79,8 @@
       Epsilon = 1.d-12
     
     parint1000 = 0  
-    init_volume_counter = 0 !for initial volume
       
-      !PI
+    !PI
     PI = ATAN(1d0)      !ATAN(1) =  PI/4
     PI = 4d0*PI         !VALUE OF PI    
     NR = Npipes         !Number of pipes in the system
@@ -128,15 +96,24 @@
     write(99,*)'_____________________________________________________'
     write(99,*) 'ITM, SWMM IDs of the and pipe type'
     write(99,*) ' ITM_ID, SWMM_ID, pipe type'
-    do j = 1, NR
+    do j = 1, Nlinks
         temp_id = ''
         call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes   
         !write(99,*), 0.0001, pump_index(j)
-        if (pump_index(j) > 0)then        
-             WRITE(99,'(I4,A10, A15)'), j, trim(temp_id),'  Pump link'
-        else
-            WRITE(99,'(I4,A10, A15)'), j, trim(temp_id),'  Pipe' 
-        endif 
+        k = link_type(j)
+        select case (k)
+        case (PUMP)
+            temp_id2 = 'PUMP'
+        case (ORIFICE)
+            temp_id2 = 'ORIFICE'
+        case (WEIR)
+            temp_id2 = 'WEIR'
+        case (OUTLET)
+            temp_id2 = 'OUTLET'
+        case default
+            temp_id2 = 'PIPE'
+        end select
+        WRITE(99,'(I4,A10, A15)'), j, trim(temp_id), temp_id2 
     enddo    
     
     write(99,*)'_____________________________________________________'
@@ -171,50 +148,18 @@
         WRITE(99,'(A5, 3F9.2)'), trim(temp_id), hdrops_overf(R),  reser_maxdepth(R), Adrop(R)
     enddo
       write(99,*)'_____________________________________________________' 
-      
-
 
     pc_press = pc
-
-    !Read data file
-    !## zb(j,1),zb(j,2) = upst. and downst. invert elevations 
-    !## Length(j) = Length of pipes
-    !## d(j) = Diameter of pipes at every reach 
-    !## n(j) = Manning roughness coefficient (gravity flow. It may be changed 
-    !## with f darcy for gravity and pressurized flows) 
-
-!   variables SWMM  varaiables ITM
-!   Elev                junct_elev
-!   Node1               Node1
-!   Node2               Node2
-!     Length                Length
-!   N                   nm
-!   Z1                  zb(i,1)
-!   Z                   zb(i,2)
-!   Q0                  Init_disch(i)
-
-    !open(UNIT=10,FILE='Reservoirs.csv',STATUS='Unknown')   
-    !open(UNIT=15,FILE='Dropshafts.csv',STATUS='Unknown')
-    
-    !Enter boundary condition and type of dropshaft, No of hydrograph and 
-    !specify if the boundary conditions it is open or pressurized. 
-
-    !data Required ends here
-    !##########################################################################################    
     system_pressur = 1 !1 System is only allowed to get pressurized
     !2 system is allow to get pressurized and depressurized
-    IDpump(:) = 0
-    !Read pumpling flow rates
 
     Nnod(:) = 0 
-    inf(:,:) = 0; oufl(:,:) = 0 
+    !inf(:,:) = 0; oufl(:,:) = 0 
     Noufl(:) = 0; Ninf(:) = 0
-    NPipes_At_Node_with_Pumps(:) = 0  !For pumps
+    NonPipesAtNode(:) = 0  !For pumps
     !NPumpOufl(:) = 0 
     !NPumpinf(:) = 0
-    
-    
-    Qpump(Nnodes) = 0d0
+        
     Outflow_limited(:) = 0d0
     NodeID(:,:) = 0
     Node(:,:) = 0
@@ -225,8 +170,8 @@
     !To determine number of inflowing and outflowing pipes 
     ! and to count the number of pipes at each node (Without PUMP)
     dmin = 10000d0
-    do k=1,NR        
-        if (pump_index(k) < 1)then !This is for regular links only (no pumps)        
+    do k=1,Nlinks        
+        if (k <= Npipes) then !This is for regular links only (no pumps)        
             i = Node1(k) !Upstream node      
             Nnod(i) = Nnod(i)+1
             R = Nnod(i); Node(i,R) = k; Noufl(i) = Noufl(i)+1
@@ -235,7 +180,6 @@
             R = Noufl(i); 
             !oufl(i,R)=k 
             Klocal(R,1) = EntranceLoss(k) !Entrance losses
-        
             
             i = Node2(k) !downstream node
             Nnod(i) = Nnod(i)+1
@@ -247,23 +191,19 @@
             Klocal(R,2) = ExitLoss(k) !Exit losses  
            
             dmin = min(d(k),dmin)
-        else if (pump_index(k) > 0)then !This is for pumps
+        else  !This is for non-pipes
             i = Node1(k) !Upstream node      
-            NPipes_At_Node_with_Pumps(i) = NPipes_At_Node_with_Pumps(i)+1
-            R = NPipes_At_Node_with_Pumps(i); NodePumpID(i,R) = k; 
+            NonPipesAtNode(i) = NonPipesAtNode(i)+1
+            R = NonPipesAtNode(i);
+            NonPipeNodeID(i,R) = k; 
             !NPumpOufl(i) = NPumpOufl(i)+1
-            NodetypePump(i,R) = 2 !outflowing 
+            NonPipeNodeType(i,R) = 2 !outflowing 
             
             i = Node2(k) !downstream node
-            NPipes_At_Node_with_Pumps(i) = NPipes_At_Node_with_Pumps(i)+1
-            R = NPipes_At_Node_with_Pumps(i); NodePumpID(i,R) = k; 
+            NonPipesAtNode(i) = NonPipesAtNode(i)+1
+            R = NonPipesAtNode(i); NonPipeNodeID(i,R) = k; 
             !NPumpinf(i) = NPumpinf(i)+1
-            NodetypePump(i,R) = 1 !inflowing
-        else
-            call itm_get_swmm_id(1, R, temp_id) ! 1 for pipes
-            write(98,*),'Subr. INIT. Unknown condition for link ',trim(temp_id)
-            write(99,*),'Subr. INIT. Unknown condition for link ',trim(temp_id)
-            call endprog; GLOBAL_STATUS_FLAG = 1; return 
+            NonPipeNodeType(i,R) = 1 !inflowing
         endif         
     enddo
     Amin = PI*dmin*dmin/4d0
@@ -287,9 +227,7 @@
     maxi = 8  !let this as it is
     min_num_grids = max(min_num_grids,8) !Minimum number of grids can not be smaller than 8
     do j=1,NR
-       if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)
-            dxtemp = min(Length(j)/min_num_grids,dxtemp)
-       endif       
+        dxtemp = min(Length(j)/min_num_grids,dxtemp)
     enddo
       
     !min_depth = 1d0/dry_diameter_fraction*dmin 
@@ -297,51 +235,23 @@
     WRITE(99,*),'Pipe ID    Dx(j)'
     Dx(:) = 10000
     do j=1,NR
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)
-            delta_depth= dabs(zb(j,1) - zb(j,2)) 
-            delta_depth= max(1d-12,delta_depth)
-            num_cells_drop =delta_depth/min_depth
+        delta_depth= dabs(zb(j,1) - zb(j,2)) 
+        delta_depth= max(1d-12,delta_depth)
+        num_cells_drop =delta_depth/min_depth
           
-            Nx(j) = max(Int(Length(j)/dxtemp),Int(num_cells_drop+1))
-            Dx(j) = Length(j)/Nx(j) 
-            maxi = max(NX(j),maxi) 
+        Nx(j) = max(Int(Length(j)/dxtemp),Int(num_cells_drop+1))
+        Dx(j) = Length(j)/Nx(j) 
+        maxi = max(NX(j),maxi) 
           
-            temp_id = ''
-            call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes   
-            WRITE(99,'(A5, F6.1)'), trim(temp_id), Dx(j)
-        endif        
+        temp_id = ''
+        call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes   
+        WRITE(99,'(A5, F6.1)'), trim(temp_id), Dx(j)
     enddo
     maxi = maxi + 4 !4(to make second order the numerical scheme)      
     write(99,*),'Minimum Dx(j) = ', MINVAL(Dx(:))
     write(99,*)'_____________________________________________________' 
     call itm_allocate_parameters(maxi)
-      !GLOBAL_STATUS_FLAG = 1
-      !return
       
-      !Gates
-      gate_Activation(:) = 0 !0 if operation was not activated, 1 if gate operation was started or completed.       
-      t_gate_act_initial(:) = 1.d+22 !This is the initial time at which gate will be operated 
-      t_gate_act_final(:) = 1.d+22 !This is the final time at which gate will be operated 
-      ClosureTime_Minutes_Gate(:) = 1 !This is the closure/opening rate of the gate in Minutes
-           
-      !This is for testing gates
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      R = 1
-      call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes    
-      Depth_check_Node_Gate(:) = temp_id
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    
     !air pockets
     RoRef_air = 1.225 ! (kg/m3) at atmosph. pressure and T = 15 degrees C 
     hap(:,:) = 0d0  
@@ -362,7 +272,6 @@
     pc_air = 340d0
     Cd = 0.65 !air discharge coefficient
     Hb = 10.33 !Atmospheric pressure in meters of water
-    
         
     Error_volume = 0d0 
     balance_volume = 0d0 !To balance conservation of volume problems
@@ -407,24 +316,7 @@ do R =1,Nnodes
             endif 
         endif        
     enddo
-   
-    do j=1,NodeNS(R) !For rating curve
-        if (BCnode(R) == 30)then
-            Drop(R,1) = weir_invert(R) - junct_elev(R)            
-            call itm_get_Q_from_rat_curve(R,abs(Drop(R,1)),QL)	
-            call itm_get_Q_from_rat_curve(R,abs(1.05*Drop(R,1)),QR)	
-            if (dabs(QL) > 0.001 .or. dabs(QL-QR) < Tol_int_10_14)then
-                call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-                write(98,*),'Weir height in node ',trim(temp_id), ' is (m): ', abs(Drop(R,1)),' , but'
-                write(98,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
-                write(99,*),'Weir height in node ',trim(temp_id), ' is (m) ', abs(Drop(R,1)),' , but'
-                write(99,*),'flow of rating curve for this height and below is not zero. Revise rating curve'
-                call endprog; GLOBAL_STATUS_FLAG = 1; return
-            endif
-        endif
-    enddo
 enddo     
-    
     
 ! Change the name of boundaries for dropshafts, junctions and reservoirs if a pump is connected to the node
 do R =1,Nnodes 
@@ -463,8 +355,8 @@ do R =1,Nnodes
             endif   
             if (BCnode(R) == 7)then                    
                 !To differentiate between a general node and the one that has two pipes with the same diameter and no inflows        
-                If(NodeNS(R) == 2 .and. NPipes_At_Node_with_Pumps(R) == 0)then  !If Number of regular pipes (no pump) connected to the node= 2
-                    !NPipes_At_Node_with_Pumps(R) is the number of pipes connected at the node including pumps
+                If(NodeNS(R) == 2 .and. NonPipesAtNode(R) == 0)then  !If Number of regular pipes (no pump) connected to the node= 2
+                    !NonPipesAtNode(R) is the number of pipes connected at the node including pumps
                     dr = abs(Drop(R,1)-Drop(R,2))
                     j_1 = NodeID(R,1); j_2 = NodeID(R,2)
                     diam_differ = abs(d(j_1)-d(j_2))                   
@@ -517,7 +409,6 @@ enddo
         call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
         WRITE(99,'(A5, F16.8)'),trim(temp_id),S0(j)             
             
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)       
             if (S0(j) < 0d0)then  !Negative slope
                 call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
                 write(99,*),'pipe ID = ',temp_id,'slope = ',S0(j)
@@ -530,7 +421,6 @@ enddo
                 write(98,*),'Change direction of flow'
                 call endprog; GLOBAL_STATUS_FLAG = 1; return
             endif 
-        endif
     enddo
       
     !Dry bed and free surface and pressurized flow limits
@@ -581,7 +471,6 @@ do j=1,NR
     !ydry(j) = 1d0/dry_diameter_fraction*dmin !Max (1mm, 1/200 dmin)
         !ydry_Cutoff(j) = 1.001*ydry(j)
     !AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)           
             kkk = 0d0
             do while (kkk <=  Interval_dry)
                 kkk = kkk+1d0
@@ -683,7 +572,6 @@ do j=1,NR
             teta = 2d0*ACOS(1d0-2d0*y_for_phi_min/d(j))
             phi_min(j) = 6.41*SIN(teta/4d0)*sqrt(g*d(j)/8d0)
             !call Phi1(j,y_for_phi_min,phi_min(j)) !Phi_max for iteration
-    endif    
 enddo 
 
 
@@ -781,15 +669,15 @@ do R =1,Nnodes
     !write(99,*),'R,max_elev_crown (R)',R,max_elev_crown (R)
 enddo   
 write(99,*)'_____________________________________________________' 
-write(99,*)'Node  Pipe  NodetypePump' 
+write(99,*)'Node  Pipe  NonPipeNodeType' 
 
 do R =1,Nnodes    
-    do i = 1,  NPipes_At_Node_with_Pumps(R)    
-        j = NodePumpID(R,i) !Pipe ID with pump
+    do i = 1,  NonPipesAtNode(R)    
+        j = NonPipeNodeID(R,i) !Pipe ID with pump
         call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
         call itm_get_swmm_id(1, j, temp_id2) ! 1 for pipes
-        WRITE(98,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NodetypePump(R,i)
-        WRITE(99,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NodetypePump(R,i)
+ !       WRITE(98,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NonPipeNodeType(R,i)
+        WRITE(99,'(A10, A10, I6)'),trim(temp_id),trim(temp_id2),NonPipeNodeType(R,i)
     enddo
 enddo
 
@@ -810,7 +698,7 @@ write(99,*)'_____________________________________________________'
             endif              
             
             if (BCnode(R) == 4 .or. BCnode(R) == 7)then
-                If (NPipes_At_Node_with_Pumps(R) > 0) then           
+                If (NonPipesAtNode(R) > 0) then           
                     if (Ares_junct(R) < AreaNodeminimum(R))then                          
                         call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
                         write(98,*),'Node is connected to pump link and node area is very small or zero. Node = ',trim(temp_id)
@@ -831,110 +719,8 @@ write(99,*)'_____________________________________________________'
         endif
     enddo      
     
-    write(99,*)'_____________________________________________________' 
-    write(99,*),'Node,   BCNode,   Number of pipes connected to node'
-    !Assigning BCNode = 41 to gates that connects to one pipe only      
-    do R =1,Nnodes    
-          temp_id = ''
-          temp_gate_id = ''
-          if (BCnode(R) == 40)then !gate boundary
-              If (NodeNS(R) == 1)then
-                  BCnode(R) = 41 !Gate bundary one pipe
-              endif
-            
-              
-          !   This is to find out to check the gate operation based on threshop depths at nodes
-              if(gate_thresholdDepth_TimeSpecified(R) == 1)then
-                  do RR =1,Nnodes    
-                      if (R .ne. RR)then
-                          call itm_get_swmm_id(0, RR, temp_id) ! 0 for nodes    
-                            temp_gate_id = Depth_check_Node_Gate(R)
-                          if(temp_gate_id == temp_id)then
-                              check_Node_Gate_ITM(R) = RR 
-                              !write(98,*),' node XXXXXXXXXXXXXXXXXXXXXXX=',trim(temp_id)   
-                              !call endprog; GLOBAL_STATUS_FLAG = 1; return
-                              goto 198
-                          endif
-                      endif 
-                  enddo  
- 198              continue             
-              endif 
-          endif
-          call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes   
-          WRITE(99,'(A8, 2I8)'),trim(temp_id),BCnode(R),NodeNS(R)
-    enddo
-    !call endprog; GLOBAL_STATUS_FLAG = 1; return
     write(99,*)'_____________________________________________________'  
-        
     
-    do R =1,Nnodes        
-            If(BCnode(R) == 30)then !Rating curve
-                L3 = Node(R,1)                  
-                if(abs(Drop(R,1)) > yref(L3))then
-                    call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-                    write(98,*),'There is a problem with the crest elevation'
-                    write(98,*),'of the rating curve node. The crest elevation '
-                   write(98,*),'must be between the invert and the crown of the '
-                   write(98,*),'connecting pipe. Error in input data. Subr. INIT' 
-                   write(98,*),'Problem in node = ',trim(temp_id)
-                   write(99,*),'There is a problem with the crest elevation'
-                   write(99,*),'of the rating curve node. The crest elevation '
-                   write(99,*),'must be between the invert and the crown of the '
-                   write(99,*),'connecting pipe. Error in input data. Subr. INIT' 
-                   write(99,*),'Problem in node = ',trim(temp_id)                  
-                   call endprog; GLOBAL_STATUS_FLAG = 1; return
-                endif   
-              elseif (BCnode(R) == 40)then !gate boundary
-                if (itm_has_inflow(R) == 1)then 
-                    call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-                    write(98,*),'A gate boundary cannot have a hydrograph'
-                    write(98,*),'Check gate at node ',trim(temp_id)
-                    write(99,*),'A gate boundary cannot have a hydrograph'
-                    write(99,*),'Check gate at node ',trim(temp_id)
-                    call endprog; GLOBAL_STATUS_FLAG = 1; return
-                elseif (NodeNS(R) .ne. 2) then !Number of pipes connected to each node
-                    call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-                    write(98,*),'A gate boundary must have one or two' 
-                    write(98,*),'pipes connected to the boundary' 
-                    write(98,*),'Check gate at node ',trim(temp_id)
-                    write(99,*),'A gate boundary must have one or two' 
-                    write(99,*),'pipes connected to the boundary'                   
-                    write(99,*),'Check gate at node ',trim(temp_id)
-                    call endprog; GLOBAL_STATUS_FLAG = 1; return
-                else 
-                    call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-                    temp1 = d(NodeID(R,1))-d(NodeID(R,2))
-                    k = NodeID(R,1)
-                    if (abs(temp1) > 0.01*d(k))then
-                        write(98,*), 'Pipes connected to gate at node', &
-                        trim(temp_id)
-                        write(98,*), 'must have the same diameter'
-                        write(99,*), 'Pipes connected to gate at node', &
-                        trim(temp_id)
-                        write(99,*), 'must have the same diameter'
-                        call endprog; GLOBAL_STATUS_FLAG = 1; return
-                    endif
-                    
-                    if (abs(Drop(R,1)) > 1.d-5*d(k) .or.  &
-                        abs(Drop(R,2)) > 1.d-5*d(k))then
-                        write(98,*),'The elevations of the inverts of the ', &
-                        'pipes that connect a gate boundary'
-                        write(98,*),'must be the same as that of the ', &
-                        'invert of the gate. This means that'
-                        write(98,*),'pipe offsets at the gate must be ', &
-                        'zero. Check gate at node ',trim(temp_id)
-                 
-                        write(99,*),'The elevations of the inverts of ', &
-                        'the pipes that connect a gate boundary'
-                        write(99,*),'must be the same as that of the ', &
-                        'invert of the gate. This means that'
-                        write(99,*),'pipe offsets at the gate must be ', &
-                        'zero. Check gate at node ',trim(temp_id)
-                        call endprog; GLOBAL_STATUS_FLAG = 1; return
-                    endif       
-                endif
-            endif                       
-    enddo
     if (sum_drop2 > 0)then !To stop if there are no areas at dropshafts             
         write(98,*),'Add dropshaft areas for nodes listed above' 
         write(98,*),'Nodes are based on SWMM notation'
@@ -943,12 +729,10 @@ write(99,*)'_____________________________________________________'
         call endprog; GLOBAL_STATUS_FLAG = 1; return
     endif
     
-    
     !slopes 
     sum_drop = 0
     
     do j=1,NR  
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)         
             !To make sure that cell size is not too big
             s_temp = max(S0(j),1.d-12)      
             dx1max = 100d0
@@ -966,7 +750,6 @@ write(99,*)'_____________________________________________________'
                 write(99,*),'max. cell size in this pipe should be at most ', dx3max,' m'
                 write(99,*),'current cell size in this pipe is ', dx(j),' m'                   
             endif
-        endif
     enddo
     
     !It is divided by 10 because y_dry has to be much smaller
@@ -997,12 +780,7 @@ write(99,*)'_____________________________________________________'
                 call endprog; GLOBAL_STATUS_FLAG = 1; return
             endif
         endif
-    
-        
-       
-        
-!       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+                    
         If(BCnode(R) == 4)then !Dropshaft boundary
             if (Nnod(R) > 1)then
                 call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
@@ -1015,7 +793,6 @@ write(99,*)'_____________________________________________________'
                 call endprog; GLOBAL_STATUS_FLAG = 1; return
             endif
         endif
-        
         
         If(BCnode(R) == 10 .or. BCnode(R) == 11)then !Constant boundary              
             write(99,*),'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&'
@@ -1038,20 +815,7 @@ write(99,*)'_____________________________________________________'
                 call endprog; GLOBAL_STATUS_FLAG = 1; return
             endif
         endif
-        
-        If(BCnode(R) == 30)then !Rating curve
-            if (Nnod(R) > 1)then
-                call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
-                write(98,*),'Node',trim(temp_id),'has more than one pipe to BC'
-                write(98,*),'Node',trim(temp_id),'can not be a rating curve boundary'
-                write(98,*),'Node',trim(temp_id),'has',Nnod(R),'pipes'
-                write(99,*),'Node',trim(temp_id),'has more than one pipe connected to BC'
-                write(99,*),'Node',trim(temp_id),'can not be a rating curve boundary'
-                write(99,*),'Node',temp_id,'has',Nnod(R),'pipes'                        
-                call endprog; GLOBAL_STATUS_FLAG = 1; return
-            endif
-        endif
-        
+                
         If(BCnode(R) == 20)then
             !To check that Reservoir BC is connected to only one pipe
             !Later I will add more pipes (Arturo Leon)
@@ -1117,19 +881,10 @@ do R=1,Nnodes
         endif            
     endif           
 enddo
-!call endprog; GLOBAL_STATUS_FLAG = 1; return 
-
- !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-        !write(99,*), 'STOP HERE5444'   
-      !call endprog; GLOBAL_STATUS_FLAG = 1; return 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ 
-
 
     !Determining the maximum and minimum critical and normal flow at the inflow 
     !that can be conveyed in gravity flow regime
     do j=1,NR 
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)             
             ycrit_max(j) = min(yref(j),0.80*d(j))
             call Area_from_H(j,ycrit_max(j),A,Ts,RH,0)
             Qcrit_maxIA(j) = A*sqrt(g*A/Ts)
@@ -1145,12 +900,10 @@ enddo
                 d1_min(j) = Ynormal(j,Qmin(j))
                 d2_min(j) = Yconjugate(j,d1_min(j),Qmin(j))             
             endif
-        endif        
     enddo
     !Increasing number of cells by 4 (second-order)
     do j=1,NR   
             Nx(j) = Nx(j) + 4   
-            if (pump_index(j) < 1)then
                 if (Nx(j) > nxmax-1) then
                     write(99,*)'INIT - Too many cells in the model'
                     write(99,*)'The number of cells in one or more pipes are exceeding the max. number of cells defined in ITM simulation options'
@@ -1158,7 +911,6 @@ enddo
                     write(98,*)'The number of cells in one or more pipes are exceeding the max. number of cells defined in ITM simulation options'
                     call endprog; GLOBAL_STATUS_FLAG = 1; return 
                 endif
-            endif 
     enddo      
     Num_max_cells = maxval(Nx(:))
     call itm_allocate_cells(Num_max_cells)
@@ -1167,7 +919,6 @@ enddo
     !Initial conditions
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
     do j=1,NR  
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)    
             discharge = Init_disch(j)               
             Q0(j,:) = discharge
             if (Init_depth_type(j) == 1) then !constant
@@ -1194,7 +945,6 @@ enddo
                 GLOBAL_STATUS_FLAG = 1
                 return
             endif  
-        endif         
     enddo   
     
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
@@ -1203,7 +953,6 @@ enddo
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
 215 if (ini_cond == 1)then 
         do j=1,NR   
-            if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)                   
                 discharge = 0d0
                 Q0(j,:) = discharge
                 R = Node1(j)
@@ -1218,7 +967,6 @@ enddo
                         enddo
                     endif
                 enddo
-            endif            
         enddo
     endif
     
@@ -1227,7 +975,6 @@ enddo
     !To determine if the flow is free surface or pressurized    
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
     do j=1,NR 
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)                        
             dz = abs(S0(j)*dx(j))             
             do i = 3,Nx(j)-2            
                 if (h0(j,i) < ydry(j))then
@@ -1261,7 +1008,6 @@ enddo
                     call endprog; GLOBAL_STATUS_FLAG = 1; return
                 endif
             enddo   
-        endif         
     enddo
     
     !pc_mixed = max(pc_mixed,1.5*maxval(celer_ref(:)))
@@ -1272,22 +1018,18 @@ enddo
       
     !For defining Ypressurized the pc for mixed flows must be used
     do j=1,NR
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)                   
             y_for_pressur(j) = (1d0 + 0.01)*Yref(j)  !It was 0.001
             Area_for_pressur(j) = Aref(j) + &
                 g*Aref(j)*(y_for_pressur(j)-Yref(j))/(pc1(j)*pc1(j)) !this is very important
-        endif        
     enddo
 
     !To determine if the flow is free surface or pressurized
     do j=1,NR     
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)                   
             do i = 3,Nx(j)-2
                 if (IdFlow(j,i) == 1)then
                     A0(j,i) = Aref(j)+g*Aref(j)*(h0(j,i)-yref(j))/(pc1(j)*pc1(j))
                 endif                       
             enddo   
-        endif        
     enddo
     
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
@@ -1295,7 +1037,6 @@ enddo
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     sum_temp1 = 0d0
     do j = 1,NR
-        if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)                   
             z0(j,2) = zb(j,1) + 5d-1*S0(j)*dx(j)
             z0(j,Nx(j)-1) = zb(j,2) - 5d-1*S0(j)*dx(j)
               do i = 3,Nx(j)-2
@@ -1317,7 +1058,6 @@ enddo
                     !write(99,*),'i,h+z(Water stage)', i, h0_Rec(j,i)+z0(j,i)
                     !write(99,*),'i,Q', i, Q0(j,i)
               enddo
-        endif        
     enddo   
         
     sum_temp2 = 0d0
@@ -1341,12 +1081,6 @@ enddo
               WRITE(99,'(A8, A30)'),trim(temp_id),'  20: Reserv.'        
           elseif (BCnode(R) == 24)then
               WRITE(99,'(A8, A30)'),trim(temp_id),'  24: 2 pipes, no infl.'
-          elseif (BCnode(R) == 30)then
-              WRITE(99,'(A8, A30)'),trim(temp_id),'  30: Rating curve'       
-          elseif (BCnode(R) == 40)then
-              WRITE(99,'(A8, A30)'),trim(temp_id),'  40: Gate (Two pipes)'
-          elseif (BCnode(R) == 41)then
-              WRITE(99,'(A8, A30)'),trim(temp_id),'  41: Gate (one pipe)'
           else
               write(98,*),'Boundary type is unknown or not supported'
               write(99,*),'Boundary type is unknown or not supported'
@@ -1359,67 +1093,12 @@ enddo
         endif
         !Volume at reservoirs
         If(BCnode(R) == 20)then
-            call itm_get_storage(R,yres_jun_old(R),Stora_new)
+            call itm_get_storage_volume(R,yres_jun_old(R),Stora_new)
             sum_temp3 = sum_temp3 + Stora_new   
           endif
         
-        If(BCnode(R) == 30)then
-            p1 = abs(Drop(R,1)) !Drop height 
-            j = NodeID(R,1) !Pipe Id of weir
-            call Area_from_H(j,p1,area,TH,RH,0)
-            area_weir(R) =  area             
-            
-            !call itm_get_Q_from_rat_curve(R,p1,Qb)
-            !if(abs(Qb) > Qmin(1)) then 
-            !    temp_id = ''
-            !    call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes           
-            !    write(98,*),'There is a rating curve at node  ', trim(temp_id), ','
-            !    write(98,*),'which has a weir of depth of p1 =', p1,'m, '
-            !    write(98,*),'but, get_Q_from_rat_curve(R,p1,Qb) gives'
-            !    write(98,*),'a flow discharge (Qb [m3/s]) > 0 for water depths'
-            !    write(98,*),'smaller than p1. Qb [m3/s] =',Qb
-            !    write(98,*),'Check rating curve at node',trim(temp_id)
-            !    write(99,*),'There is a rating curve at node  ', trim(temp_id), ','
-            !    write(99,*),'which has a weir of depth of p1 =', p1,'m, '
-            !    write(99,*),'but, get_Q_from_rat_curve(R,p1,Qb) gives'
-            !    write(99,*),'a flow discharge (Qb [m3/s])>0 for water depths'
-            !    write(99,*),'smaller than p1. Qb [m3/s] =',Qb
-            !    write(99,*),'Check rating curve at node',trim(temp_id)
-            !    call endprog; GLOBAL_STATUS_FLAG = 1; return  
-            !endif
-            !!Maximum flow specified at the rating curve. This is used to check if the water level in the rating curve is exceeded. 
-            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            temp100 = 10.**14.
-            call itm_get_Q_from_rat_curve(R,temp100,Qb)         
-            Max_flow_rating_curve(R) = abs(Qb)
-            call itm_get_max_rating_head(R,Max_Head_rating_curve(R))
-            If (Max_Head_rating_curve(R) < (yref(j)-p1))then
-                  temp_id = ''
-                  call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes 
-                  write(98,*),'No enough data in rat.curve.Node ', trim(temp_id)
-                  write(98,*),'Extend rating curve for this node until water level over the weir reaches the pipe crown'
-                  write(99,*),'No enough data in rat.curve.Node ', trim(temp_id)                  
-                  write(99,*),'Extend rating curve for this node until water level over the weir reaches the pipe crown'
-                  call endprog; GLOBAL_STATUS_FLAG = 1; return  
-            endif
-      endif         
       enddo
       write(99,*)'_____________________________________________________' 
-! Code segment below was moved up inside the do loop since R at this
-! point would be 1 greater than Nnodes and cause a runtime error
-!       If(BCnode(R) == 30)then !Rating curve 
-!              j = NodeID(R,1)
-!              If (Max_Head_rating_curve(R) <= yref(j))then
-!                  temp_id = ''
-!                  call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes    
-!                  write(98,*),'No enough data in rat.curve.Node',
-!     &             trim(temp_id)
-!                  write(98,*),'Please extend rating curve'
-!                  call endprog; GLOBAL_STATUS_FLAG = 1; return 
-!              endif
-!      endif
-      
-      
 
     Initial_volume_stored = sum_temp1 + sum_temp2 + sum_temp3
     Vol_stored_old_time = Initial_volume_stored
@@ -1432,37 +1111,17 @@ enddo
     write(99,1005),'t (s)=',T_GLOBAL,' Initial volume lost (M3)=', &
             Vol_lost_system
     write(99,*)'_____________________________________________________'  
-      !&    ' Vol. stored (M3) =',Volume_stored_current_step,
-      !&    ' Vol. outflow (M3) = ',Vol_lost_system,
-      !&    ' Error vol (%) = ',Error_volume
-
       
       !To determine if the boundary is open channel or pressurized      
       do R=1,Nnodes
             call Boundary_Open_Press(R)
-            Hgate_open(R) = gate_data(R)%init_opening
       enddo  
-      
-      !write(99,*),'$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$' 
-      !write(99,*),'$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$' 
-      !write(99,*),'$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$' 
-      !write(99,*),'t, reserv. depth2', T_global, yres_jun_old(18)
-      !write(99,*),'$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$' 
-      !write(99,*),'$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$' 
-      write(99,*),'$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$1' 
       
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
     !Determination of the initial time step
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
       DtMax = Min(DtMax1,Tstor,Tmax)
- 980    format(I2,3f12.6)
- 990    format(I2,2f12.6)
- 994    format(A20,1000I20)
- 995    format(3000f12.6)
- 996    format(A20,1000A20) 
 1005    FORMAT (A10,F10.2,A20,ES13.4,A20,ES13.4,A20,ES13.4,A20,F5.1) 
-1010    format(A10,A10,A50)
-1015    format(A50)
       
       return
     end

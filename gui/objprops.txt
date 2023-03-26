@@ -1,8 +1,8 @@
 {-------------------------------------------------------------------}
 {                    Unit:    Objprops.txt                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/19/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/02/23                              }
 {                                                                   }
 {  Constants used with ITM and imported into Uproject.pas.          }
 {-------------------------------------------------------------------}
@@ -13,9 +13,9 @@ const
 // Labels for Project objects
 //---------------------------
   ObjectLabels: array[0..MAXCLASS] of PChar =
-    ('Title / Notes', 'Option', 'Junction', 'Boundary', 'Gate', 'Weir',
-     'Storage Unit', 'Conduit', 'Label', 'Gate Curve', 'Rating Curve',
-     'Storage Curve', 'Pump Curve', 'Control Curve', 'Time Series'
+    ('Title / Notes', 'Option', 'Junction', 'Boundary', 'Storage Unit',
+     'Conduit', 'Pump', 'Orifice', 'Weir', 'Outlet', 'Label', 'Storage Curve',
+     'Pump Curve', 'Rating Curve','Control Curve', 'Time Series'
     );
 
 //---------------------------
@@ -67,6 +67,14 @@ const
   PumpTypes: array[0..3] of PChar =
     ('TYPE1', 'TYPE2', 'TYPE3', 'TYPE4');
 
+//-----------
+// Weir Types
+//-----------
+  WeirTypes: array[0..3] of PChar =
+    ('TRANSVERSE', 'SIDEFLOW', 'V-NOTCH', 'TRAPEZOIDAL');
+  WeirShapes: array[0..3] of PChar =
+    ('RECT_OPEN', 'RECT_OPEN', 'TRIANGULAR', 'TRAPEZOIDAL');
+
 //---------------------------
 // DWF Pattern types
 //---------------------------
@@ -88,14 +96,14 @@ const
 //---------------------------
 // Curve Type Options
 //---------------------------
-  CurveTypeOptions: array[0..4] of PChar =
-    ('GATE', 'RATING', 'STORAGE', 'PUMP', 'CONTROL');
+  CurveTypeOptions: array[0..3] of PChar =
+    ('STORAGE', 'PUMP', 'RATING', 'CONTROL');
 
 //-----------------------------
 // Control Methods
 //-----------------------------
   ControlMethods: array[0..2] of PChar =
-    ('NONE', 'TIME SERIES', 'NODE DEPTH');
+    ('NONE', 'TIME', 'DEPTH');
 
 //-------------------------------
 // ITM Flow Types
@@ -169,47 +177,6 @@ const
       ('', ''),
       (' (ft2)', ' (m2)'));
 
-  WeirProps: array [0..7] of TPropRecord =
-    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
-     (Name:'X-Coordinate';      Style:esEdit;      Mask:emNumber;     Length:0),
-     (Name:'Y-Coordinate';      Style:esEdit;      Mask:emNumber;     Length:0),
-     (Name:'Description';       Style:esButton;    Mask:emNone;       Length:0),
-     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace;    Length:0),
-     (Name:'Invert Elev.';      Style:esEdit;      Mask:emNumber;     Length:0),
-     (Name:'Crest Elev.';       Style:esEdit;      Mask:emNumber;     Length:0),
-     (Name:'Rating Curve';      Style:esComboEdit; Mask:emNoSpace;    Length:0;
-      List:''));
-
-  DefWeir: array [0..7] of String =
-    ('',        //0 - ID
-     '',        //1 - X
-     '',        //2 - Y
-     '',        //3 - Comment
-     '',        //4 - Tag
-     '0',       //5 - Invert Elev.
-     '0',       //6 - Crest Elev.
-     '');       //7 - Rating Curve
-
-  WeirHint: array[0..7] of String =
-    ('User-assigned name of weir',
-     'X coordinate of weir on study area map',
-     'Y coordinate of weir on study area map',
-     'Optional comment or description',
-     'Optional category or classification',
-     'Elevation of the weir''s invert',
-     'Elevation of the weir''s crest',
-     'Name of Rating Curve relating discharge to head');
-
-  WeirPropUnits: array [0..7, 0..1] of String =
-    ( ('',''),
-      ('',''),
-      ('',''),
-      ('',''),
-      ('',''),
-      (' (ft)', ' (m)'),
-      (' (ft)', ' (m)'),
-      ('', ''));
-
   BoundaryProps: array[0..8] of TPropRecord =
     ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;   Length:0),
      (Name:'X-Coordinate';      Style:esEdit;      Mask:emNumber;    Length:0),
@@ -257,62 +224,6 @@ const
       ('', ''),
       ('', ''));
 
-  GateProps: array [0..12] of TPropRecord =
-    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;   Length:0),
-     (Name:'X-Coordinate';      Style:esEdit;      Mask:emNumber;    Length:0),
-     (Name:'Y-Coordinate';      Style:esEdit;      Mask:emNumber;    Length:0),
-     (Name:'Description';       Style:esButton;    Mask:emNone;      Length:0),
-     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace;   Length:0),
-     (Name:'Invert Elev.';      Style:esEdit;      Mask:emNumber;    Length:0),
-     (Name:'Gate Curve';        Style:esComboEdit; Mask:emNoSpace;   Length:0;
-      List:''),
-     (Name:'Initial % Open';    Style:esEdit;      Mask:emPosNumber; Length:0),
-     (Name:'Time to Open/Close'; Style:esEdit;     Mask:emPosNumber; Length:0),
-     (Name:'Control Method';    Style:esComboList; Mask:emNone;      Length:0;
-      List:'NONE'#13'TIME SERIES'#13'NODE DEPTH'),
-     (Name:'Control Series';    Style:esComboEdit; Mask:emNoSpace;   Length:0;
-      List:''),
-     (Name:'Control Node';      Style:esEdit;      Mask:emNoSpace;   Length:0),
-     (Name:'Control Curve';     Style:esComboEdit; Mask:emPosNumber; Length:0;
-      List:'')
-    );
-
-  DefGate: array[0..12] of String =
-    ('',           //0 - ID
-     '',           //1 - X
-     '',           //2 - Y
-     '',           //3 - Comment
-     '',           //4 - Tag
-     '0',          //5 - Invert
-     '',           //6 - Gate Curve
-     '100',        //7 - Initial Status
-     '0',          //8 - Open/Close Time
-     'NONE',       //9 - Control Method
-     '',           //10 - Time Series
-     '',           //11 - Control Node
-     '');          //12 - Control Curve
-
-  GateHint: array[0..12] of String =
-    ('User-assigned name of gate node',
-     'X coordinate of gate on study area map',
-     'Y coordinate of gate on study area map',
-     'Optional comment or description',
-     'Optional category or classification',
-     'Elevation of connecting pipe''s invert at gate location',
-     'Name of Gate Curve relating head loss to percent opening',
-     'Initial percent that gate is open',
-     'Time it takes to open/close the gate (mins)',
-     'Method used to control the gate''s percent opening',
-     'Name of Time Series used to control the gate',
-     'Name of node whose water level controls the gate',
-     'Name of Control Curve relating gate opening to node depth');
-
-  GatePropUnits: array [0..12, 0..1] of String =
-    ( ('',''), ('',''), ('',''), ('',''), ('',''),
-      (' (ft)',' (m)'), ('',''), ('',''), ('',''),
-      ('',''), ('',''), ('',''), ('','')
-    );
-
   StorageProps: array [0..9] of TPropRecord =
     ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;     Length:0),
      (Name:'X-Coordinate';      Style:esEdit;      Mask:emNumber;      Length:0),
@@ -359,7 +270,7 @@ const
       ('',''), ('','')
     );
 
-  ConduitProps: array [0..24] of TPropRecord =
+  ConduitProps: array [0..14] of TPropRecord =
     ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
      (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;    Length:0),
      (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;    Length:0),
@@ -375,24 +286,10 @@ const
      (Name:'Init. Depth Type';  Style:esComboList; Mask:emNone;       Length:0;
       List:'CONSTANT'#13'CRITICAL'#13'NORMAL'),
      (Name:'Init. Depth Value'; Style:esEdit;      Mask:emNumber),
-     (Name:'Init. Flow Rate';   Style:esEdit;      Mask:emNumber),
-     (Name:'Pump Included';     Style:esComboList; Mask:emNone;       Length:0;
-      List:'NO'#13'YES'),
-     (Name:'For Pumps Only';    Style:esHeading;   Mask:emNone),
-     (Name:'Pump Curve';        Style:esComboEdit; Mask:emNoSpace;    Length:0;
-      List:''),
-     (Name:'Local Loss Coeff.'; Style:esEdit;      Mask:emPosNumber),
-     (Name:'Friction Factor';   Style:esEdit;      Mask:emPosNumber),
-     (Name:'Initial Setting';   Style:esEdit;      Mask:emPosNumber),
-     (Name:'Control Method';    Style:esComboList; Mask:emNone;       Length:0;
-      List:'NONE'#13'TIME SERIES'#13'NODE DEPTH'),
-     (Name:'Control Series';    Style:esComboEdit; Mask:emNoSpace;    Length:0;
-      List:''),
-     (Name:'Control Node';      Style:esEdit;      Mask:emNoSpace;   Length:0),
-     (Name:'Control Curve';     Style:esComboEdit; Mask:emPosNumber; Length:0;
-      List:''));
+     (Name:'Init. Flow Rate';   Style:esEdit;      Mask:emNumber)
+     );
 
-  DefConduit: array [0..24] of String =
+  DefConduit: array [0..14] of String =
     ('',         //0 - ID
      '',         //1 - Inlet Node
      '',         //2 - Outlet Node
@@ -407,19 +304,9 @@ const
      '0.5',      //11 - Exit Loss Coeff.
      'CONSTANT', //12 - Init. Depth Type
      '0',        //13 - Init. Depth
-     '0',        //14 - Init. Flow
-     'NO',       //15 - Includes Pump
-     '',         //16
-     '',         //17 - Pump Curve
-     '0',        //18 - Local Loss Coeff.
-     '0.04',     //19 - Friction Factor
-     '100',      //20 - Init. Setting
-     'NONE',     //21 - Control Method
-     '',         //22 - Control Series
-     '',         //23 - Control Node
-     '');        //24 - Control Curve
+     '0');       //14 - Init. Flow
 
-  ConduitHint: array[0..24] of String =
+  ConduitHint: array[0..14] of String =
     ('User-assigned name of Conduit',
      'Name of node on the inlet end of conduit ',
      'Name of node on the outlet end of conduit ',
@@ -435,25 +322,272 @@ const
      'How the initial depth within the conduit will be specified',
      'Initial water depth for the CONSTANT depth condition',
      'Initial flow rate in the conduit (must be non-zero if '+
-     'depth condition is CRITICAL or NORMAL)',
-     'Conduit contains a pump',
-     '',
-     'Name of pump''s pump curve (flow v. head delivered)',
-     'Local loss coefficient for valves, bends, etc.',
-     'Darcy-Weisbach friction factor for inlet/outlet piping',
-     'Pump''s initial speed setting (% of nominal speed)',
-     'Method used to control the pump''s speed setting',
-     'Name of Time Series used to control the pump',
-     'Name of node whose water level controls the pump',
-     'Name of Control Curve relating pump setting to node depth');
+     'depth condition is CRITICAL or NORMAL)');
 
-  ConduitPropUnits: array [0..24, 0..1] of String =
+  ConduitPropUnits: array [0..14, 0..1] of String =
     ( ('',''), ('',''), ('',''), ('',''), ('',''), (' (ft)',' (m)'),
       (' (ft)',' (m)'), ('',''),
       (' (ft)',' (m)'), (' (ft)',' (m)'), ('',''), ('',''),
-      ('',''), (' (ft)',' (m)'), (' (CFS)',' (CMS)'), ('',''),
-      ('',''), ('',''), ('',''), ('',''), ('',''), ('',''), ('',''),
-      ('',''), ('','') );
+      ('',''), (' (ft)',' (m)'), (' (CFS)',' (CMS)'));
+
+
+  PumpProps: array[0..14] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace),
+     (Name:'Pump Curve';        Style:esComboEdit; Mask:emNoSpace;    Length:0;
+      List:''),
+     (Name:'Piping Diameter';   Style:esEdit;      Mask:emPosNumber),
+     (Name:'Piping Length';     Style:esEdit;      Mask:emPosNumber),
+     (Name:'Friction Factor';   Style:esEdit;      Mask:emPosNumber),
+     (Name:'Local Loss Coeff.'; Style:esEdit;      Mask:emPosNumber),
+     (Name:'Initial Setting';   Style:esEdit;      Mask:emPosNumber),
+     (Name:'Control Method';    Style:esComboList; Mask:emNone;       Length:0;
+      List:'NONE'#13'TIME'#13'DEPTH'),
+     (Name:'Control Series';    Style:esComboEdit; Mask:emNoSpace;   Length:0;
+      List:''),
+     (Name:'Control Node';      Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Control Curve';     Style:esComboEdit; Mask:emPosNumber; Length:0;
+      List:'')
+    );
+
+
+  DefPump: array [0..14] of String =
+    ('',         //0 - ID
+     '',         //1 - Inlet Node
+     '',         //2 - Outlet Node
+     '',         //3 - Comment
+     '',         //4 - Tag
+     '',         //5 - Pump Curve
+     '1',        //6 - Piping Diameter
+     '10',       //7 - Piping Length
+     '0.04',     //8 - Friction Factor
+     '0.5',      //9 - Local Loss Coeff.
+     '100',      //10 - Initial Setting
+     'NONE',     //11 - Control Method
+     '',         //12 - Time Series
+     '',         //13 - Control Node
+     '');        //14 - Control Curve
+
+  PumpHint: array[0..14] of String =
+    ('User-assigned name of Pump',
+     'Name of node on the inlet end of pump ',
+     'Name of node on the outlet end of pump ',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Name of pump''s pump curve (head v. flow)',
+     'Diameter of inlet/outlet piping',
+     'Length of inlet/outlet piping',
+     'Darcy-Weisbach friction factor for inlet/outlet piping',
+     'Local loss coefficient for valves, bends, etc.',
+     'Initial relative speed setting (as % of nominal value)',
+     'Method used to control the pump''s speed setting',
+     'Name of Time Series used to control the pump',
+     'Name of node whose water depth controls the pump',
+     'Name of Control Curve relating pump speed to water depth');
+
+  PumpPropUnits: array [0..14, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), ('',''),
+      (' (ft)',' (m)'), (' (ft)',' (m)'), ('',''), ('',''),
+      ('',''), ('',''), ('',''), ('',''), ('','') );
+
+  OrificeProps: array [0..17] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Type';              Style:esComboList; Mask:emNone;       Length:0;
+      List:'SIDE'),
+     (Name:'Shape';             Style:esComboList; Mask:emNone;       Length:0;
+      List:'RECT_CLOSED'),
+     (Name:'Height';            Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Width';             Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Inlet Offset';      Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Discharge Coeff.';  Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Flap Gate';         Style:esComboList; Mask:emNone;       Length:0;
+      List:'NO'#13'YES'),
+     (Name:'Initial % Open';    Style:esEdit;      Mask:emPosNumber),
+     (Name:'Time to Close';     Style:esEdit;      Mask:emPosNumber),
+     (Name:'Control Method';    Style:esComboList; Mask:emNone;      Length:0;
+      List:'NONE'#13'TIME'#13'DEPTH'),
+     (Name:'Control Series';    Style:esComboEdit; Mask:emNoSpace;   Length:0;
+      List:''),
+     (Name:'Control Node';      Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Control Curve';     Style:esComboEdit; Mask:emPosNumber; Length:0;
+      List:'')
+    );
+
+  DefOrifice: array[0..17] of String =
+    ('',            //0 - ID
+     '',            //1 - Start node
+     '',            //2 - End node
+     '',            //3 - Comment
+     '',            //4 - Tag
+     'SIDE',        //5 - Type
+     'RECT_CLOSED', //6 - Shape
+     '1',           //7 - Height
+     '1',           //8 - Width
+     '0',           //9 - Crest Ht.
+     '0.65',        //10 - Disch. Coeff.
+     'NO',          //11 - Flap Gate
+     '100',         //12 - Initial Setting
+     '0',           //13 - Time to Close
+     'NONE',        //14 - Control Method
+     '',            //15 - Control Series
+     '',            //16 - Control Node
+     '');           //17 - Control Curve
+
+  OrificeHint: array[0..17] of String =
+    ('User-assigned name of orifice',
+     'Name of node on the inlet end of orifice',
+     'Name of node on the outlet end of orifice',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Type of orifice',
+     'Orifice shape',
+     'Height of orifice opening when fully open',
+     'Width of orifice opening when fully opened',
+     'Height of bottom of orifice above invert of inlet node',
+     'Discharge coefficient (unitless)',
+     'Select YES if orifice contains a flap gate to prevent backflow',
+     'Initial percent that orifice is fully open',
+     'Time to close a fully open orifice (minutes)',
+     'Method used to control the height of the orifice opening '+
+      '(as in a lift gate)',
+     'Name of Time Series used to control the orifice',
+     'Name of node whose water depth controls the orifice',
+     'Name of Control Curve relating orifice opening to water depth');
+
+  OrificePropUnits: array [0..17, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), ('',''), ('',''),
+      (' (ft)',' (m)'), (' (ft)',' (m)'), (' (ft)',' (m)'),
+      ('',''), ('',''), ('',''), ('',''), ('',''), ('',''), ('',''), ('','')
+    );
+
+   WeirProps: array [0..17] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace),
+     (Name:'Type';              Style:esComboList; Mask:emNone;       Length:0;
+      List:'TRANSVERSE'),
+     (Name:'Height';            Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Length';            Style:esEdit;      Mask:emPosNumber;  Length:0),
+ //    (Name:'Side Slope';        Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Inlet Offset';      Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Discharge Coeff.';  Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'End Contractions';  Style:esComboList; Mask:emNone;       Length:0;
+      List:'0'#13'1'#13'2'),
+//     (Name:'End Coeff.';        Style:esEdit;      Mask:emPosNumber;  Length:0),
+     (Name:'Can Surcharge';     Style:esComboList; Mask:emNone;       Length:0;
+      List:'NO'#13'YES'),
+     (Name:'Initial % Open';    Style:esEdit;      Mask:emPosNumber),
+     (Name:'Time to Close';     Style:esEdit;      Mask:emPosNumber),
+     (Name:'Control Method';    Style:esComboList; Mask:emNone;      Length:0;
+      List:'NONE'#13'TIME'#13'DEPTH'),
+     (Name:'Control Series';    Style:esComboEdit; Mask:emNoSpace;   Length:0;
+      List:''),
+     (Name:'Control Node';      Style:esEdit;      Mask:emNoSpace;   Length:0),
+     (Name:'Control Curve';     Style:esComboEdit; Mask:emPosNumber; Length:0;
+      List:'')
+    );
+
+  DefWeir: array [0..17] of String =
+    ('',            //0 - ID
+     '',            //1 - Start node
+     '',            //2 - End node
+     '',            //3 - Comment
+     '',            //4 - Tag
+     'TRANSVERSE',  //5 - Type
+     '1',           //6 - Height
+     '1',           //7 - Width
+   //'0',           //8 - Side Slope
+     '0',           //8 - Crest Height
+     '1.84',        //9 - Disch. Coeff.
+   //'NO',          //11 - Flap Gate
+     '0',           //10 - End Contractions
+   //'1.4',         //13 - End Disch. Coeff.
+     'YES',         //11 - Can Surcharge
+     '100',         //12 - Initial Opening
+     '0',           //14 - Time to Close
+     'NONE',        //13 - Control Method
+     '',            //15 - Control Series
+     '',            //16 - Control Node
+     '');           //17 - Control Curve
+
+  WeirHint: array[0..17] of String =
+    ('User-assigned name of weir',
+     'Name of node on the inlet end of weir',
+     'Name of node on the outlet end of weir',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Type of weir',
+     'Vertical height of weir opening',
+     'Horizontal length of weir crest (or crown for V-NOTCH weir)',
+ //  'Slope (width-to-height) of TRAPEZOIDAL weir side walls',
+     'Height of bottom of weir opening from invert of inlet node',
+     'Discharge coefficient for central portion of weir',
+ //  'Select YES if weir contains a flap gate to prevent backflow',
+     'Number of end contractions',
+ //  'Discharge coefficient for flow through the triangular ends of a TRAPEZOIDAL weir',
+     'Select YES if weir can surcharge',
+     'Initial percent that orifice is fully open',
+     'Time to close a fully open weir (minutes)',
+     'Method used to control the crest height of the weir opening ' +
+     '(as in a lift gate)',
+     'Name of Time Series used to control the weir',
+     'Name of node whose water depth controls the weir',
+     'Name of Control Curve relating weir opening to water depth');
+
+  WeirPropUnits: array [0..17, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), ('',''),
+      (' (ft)',' (m)'), (' (ft)',' (m)'), //('',''),
+      (' (ft)',' (m)'), (' (CFS)',' (CMS)'), //('',''),
+      ('',''), //(' (CFS)',' (CMS)'),
+      ('',''), ('',''), ('',''), ('',''), ('',''), ('',''), ('','') );
+
+  OutletProps: array [0..7] of TPropRecord =
+    ((Name:'Name';              Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Inlet Node';        Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Outlet Node';       Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Description';       Style:esButton;    Mask:emNone),
+     (Name:'Tag';               Style:esEdit;      Mask:emNoSpace),
+     (Name:'Inlet Offset';      Style:esEdit;      Mask:emNoSpace;    Length:0),
+     (Name:'Flap Gate';         Style:esComboList; Mask:emNone;       Length:0;
+      List:'NO'#13'YES'),
+     (Name:'Rating Curve';      Style:esComboEdit; Mask:emNoSpace;    Length:0;
+      List:'')
+    );
+
+  DefOutlet: array[0..7] of String =
+    ('',            //0 - ID
+     '',            //1 - Start node
+     '',            //2 - End node
+     '',            //3 - Comment
+     '',            //4 - Tag
+     '0',           //5 - Inlet Offset
+     'NO',          //6 - Flap Gate
+     '');           //7 - Rating Curve
+
+  OutletPropUnits: array [0..7, 0..1] of String =
+    ( ('',''), ('',''), ('',''), ('',''), ('',''), (' (ft)',' (m)'),
+      ('',''), ('','')
+    );
+
+  OutletHint: array[0..7] of String =
+    ('User-assigned name of outlet',
+     'Name of node on the inlet end of outlet',
+     'Name of node on the outlet end of outlet',
+     'Optional comment or description',
+     'Optional category or classification',
+     'Height of outlet''s opening above inlet node invert',
+     'Select YES if outlet contains a flap gate to prevent backflow',
+     'Name of rating curve that relates outflow to depth above offset'
+    );
 
   LabelProps: array [0..4] of TPropRecord =
    ((Name:'Text';               Style:esEdit;       Mask:emNone),

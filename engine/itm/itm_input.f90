@@ -42,11 +42,14 @@ integer :: error_code
     read(10, '(A)') project_title
     call itm_output_write_title()
     read(10,*) Nnodes
-    read(10,*) Nlinks
+    read(10,*) Npipes
     read(10,*) Npumps
+    read(10,*) Norifs
+    read(10,*) Nweirs
+    read(10,*) Noutlets
     read(10,*) Ncurves
     read(10,*) Ntseries
-    Npipes = Nlinks
+    Nlinks = Npipes + Npumps + Norifs + Nweirs + Noutlets
     
     ! Allocate memory for input data arrays
     call allocate_input_arrays
@@ -67,14 +70,13 @@ subroutine allocate_input_arrays
 ! Allocate memory for arrays that hold input data.
 !==============================================================================
 integer :: i
-    allocate(node_curve(Nnodes))
     allocate(inflow(Nnodes))
-    allocate(gate_data(Nnodes))
     allocate(curve(Ncurves))
     allocate(tseries(Ntseries))
     
     allocate(node_id(Nnodes))
     allocate(node_type(Nnodes))
+    allocate(node_curve(Nnodes))
     allocate(junct_elev(Nnodes))
     allocate(Adrop(Nnodes))
     allocate(hdrops_overf(Nnodes))
@@ -84,7 +86,6 @@ integer :: i
     allocate(flowdepth_res(Nnodes))
     allocate(reser_maxdepth(Nnodes))
     allocate(reser_outflow(Nnodes))
-    allocate(weir_invert(Nnodes))
 
     allocate(link_id(Nlinks))
     allocate(link_type(Nlinks))
@@ -99,12 +100,16 @@ integer :: i
     allocate(Init_depth_type(Nlinks))
     allocate(Init_depth(Nlinks))
     allocate(Init_disch(Nlinks))
-    allocate(pump_index(Nlinks))
-    allocate(pump_data(Npumps))
+    
+    allocate(pumps(Npumps))
+    allocate(orifs(Norifs))
+    allocate(weirs(Nweirs))
+    allocate(outlets(Noutlets))
+    allocate(link_type_index(Nlinks))
     
     node_type         = JUNCTION
-    junct_elev        = 0
     node_curve        = 0
+    junct_elev        = 0
     Adrop             = 0
     hdrops_overf      = 0
     const_depth_flow  = 0
@@ -115,16 +120,10 @@ integer :: i
     reser_outflow     = 0
     weir_invert       = 0
     link_type         = PIPE
-    pump_index        = 0
+    link_type_index   = 0
   
-    ! Initialize gate & inflow properties
+    ! Initialize inflow properties
     do i = 1, Nnodes
-        gate_data(i)%init_opening    = 0d0
-        gate_data(i)%target_opening  = 0d0
-        gate_data(i)%opening_rate    = 0d0
-        gate_data(i)%control_tseries = 0
-        gate_data(i)%control_node    = 0
-        gate_data(i)%control_curve   = 0
         inflow(i)%tseries            = 0
         inflow(i)%baseline           = 0d0
         inflow(i).scale_factor       = 1d0
@@ -139,8 +138,11 @@ subroutine itm_input_close
 !==============================================================================
 integer :: i
 
-    FREE(pump_data)
-    FREE(pump_index)
+    FREE(link_type_index)
+    FREE(outlets)
+    FREE(weirs)
+    FREE(orifs)
+    FREE(pumps)
     FREE(Init_disch)
     FREE(Init_depth)
     FREE(Init_depth_type)  
@@ -155,7 +157,6 @@ integer :: i
     FREE(link_type)
     FREE(link_id)
 
-    FREE(weir_invert)
     FREE(reser_outflow)
     FREE(reser_maxdepth)
     FREE(flowdepth_res)
@@ -165,6 +166,7 @@ integer :: i
     FREE(hdrops_overf)
     FREE(Adrop)
     FREE(junct_elev)
+    FREE(node_curve)
     FREE(node_type)
     FREE(node_id)
  
@@ -177,9 +179,7 @@ integer :: i
     
     FREE(tseries)
     FREE(curve)
-    FREE(gate_data)
     FREE(inflow)
-    FREE(node_curve)
     
 end subroutine itm_input_close
   
@@ -196,11 +196,14 @@ logical :: is_open
         index = 0
         call read_junction_data(index)
         call read_boundary_data(index)
-        call read_gate_data(index)
-        call read_weir_data(index)
         call read_storage_data(index)
-        call read_pipe_data
-        call read_pump_data
+        index = 0
+        call read_pipe_data(index)
+        call read_pump_data(index)
+        call read_orif_data(index)
+        call read_weir_data(index)
+        call read_outlet_data(index)
+        
         call read_inflow_data
         call read_curve_data
         call read_tseries_data
@@ -229,7 +232,6 @@ character(IDLEN) :: id
         node_type(index)         = JUNCTION
         junct_elev(index)        = invert
         hdrops_overf(index)      = max_depth
-        !const_depth_flow(index)  = init_depth
         flowdepth_res(index)     = init_depth
         Adrop(index)             = area
         open_closed_bound(index) = dropshaft
@@ -264,65 +266,6 @@ character(IDLEN) :: id
 end subroutine read_boundary_data
   
   
-subroutine read_gate_data(index)
-!==============================================================================
-! Read input data for gate nodes.
-!==============================================================================
-integer, intent(inout) :: index
-integer :: i, n, hloss_curve, ctrl_series, ctrl_node, ctrl_curve
-real(8) :: invert, init_open, open_rate
-character(IDLEN) :: id
-
-    read(10, *) n
-    if (n == 0) return
-    do i = 1, n
-        read(10, *) id, invert, init_open, open_rate, hloss_curve, &
-        ctrl_series, ctrl_node, ctrl_curve
-        index = index + 1
-        node_id(index)              = id
-        node_type(index)            = GATE
-        junct_elev(index)           = invert
-        node_curve(index)           = hloss_curve
-        BCnode(index)               = GATE2
-        gate_data(index)%init_opening    = init_open
-        gate_data(index)%target_opening  = init_open
-        gate_data(index)%opening_rate    = open_rate
-        gate_data(index)%control_tseries = ctrl_series
-        gate_data(index)%control_node    = ctrl_node
-        gate_data(index)%control_curve   = ctrl_curve
-    end do
-    
-end subroutine read_gate_data    
-  
-  
-subroutine read_weir_data(index)
-!==============================================================================
-! Read input data weir nodes with rating curves.
-!==============================================================================
-integer, intent(inout) :: index  
-integer :: i, n, a_rating_curve
-real(8) :: invert, crest
-character(IDLEN) :: id
-
-    read(10, *) n
-    if (n == 0) return
-    do i = 1, n
-        read(10, *) id, invert, crest, a_rating_curve
-        index = index + 1
-        node_id(index)           = id
-        node_type(index)         = WEIR
-        weir_invert(index)       = invert
-        junct_elev(index)        = crest
-        node_curve(index)        = a_rating_curve
-        BCnode(index)            = RATE_CURVE
-        hdrops_overf(index)      = 1
-        reser_maxdepth(index)    = 1
-        open_closed_bound(index) = 0
-    end do
-    
-end subroutine read_weir_data    
-  
-  
 subroutine read_storage_data(index)
 !==============================================================================
 ! Read input data storage nodes.
@@ -351,23 +294,24 @@ character(IDLEN) :: id
 end subroutine read_storage_data
 
   
-subroutine read_pipe_data
+subroutine read_pipe_data(index)
 !==============================================================================
 ! Read input data for pipe links.
 !==============================================================================
-integer :: index, i, n, n1, n2, itype 
+integer, intent(inout) :: index
+integer :: i, n, n1, n2, itype 
 real(8) :: diam, len, rough, off1, off2, loss1, loss2, q0, d0 
 character(IDLEN) :: id
 
     read(10, *) n
     if (n == 0) return
-    index = 0
     do i = 1, n
         read(10, *) id, n1, n2, diam, len, rough, off1, off2, &
             loss1, loss2, q0, d0, itype
         index = index + 1
         link_id(index)         = id
         link_type(index)       = PIPE
+        link_type_index(index) = index
         Node1(index)           = n1
         Node2(index)           = n2
         d(index)               = diam
@@ -385,33 +329,162 @@ character(IDLEN) :: id
 end subroutine read_pipe_data  
 
 
-subroutine read_pump_data
+subroutine read_pump_data(index)
 !==============================================================================
 ! Read input data for pipes with pumps
 !==============================================================================
-integer :: index, i, n
-integer :: link_index, pmp_curve, ctrl_series, ctrl_node, ctrl_curve
-real(8) :: kloss, fric_factor, setting
+integer, intent(inout) :: index
+integer :: i, k, n, n1, n2, ctrl_type
+integer :: pmp_curve, ctrl_series, ctrl_node, ctrl_curve
+real(8) :: diam, length, kloss, fric_factor, setting, close_rate
+character(IDLEN) :: id
 
     read(10, *) n
     if (n == 0) return
-    index = 0
     do i = 1, n
+        read(10, *) id, n1, n2, pmp_curve, diam, length, fric_factor, kloss, setting
+
         index = index + 1
-        read(10, *) link_index, pmp_curve, kloss, fric_factor, setting, &
-            ctrl_series, ctrl_node, ctrl_curve
-        pump_index(link_index)           = index
-        pump_data(index)%pump_curve      = pmp_curve
-        pump_data(index)%loss_coeff      = kloss
-        pump_data(index)%friction_factor = fric_factor
-        pump_data(index)%init_setting    = setting
-        pump_data(index)%setting         = setting
-        pump_data(index)%control_tseries = ctrl_series
-        pump_data(index)%control_node    = ctrl_node
-        pump_data(index)%control_curve   = ctrl_curve
+        link_id(index)         = id
+        link_type(index)       = PUMP
+        link_type_index(index) = i
+        Node1(index)           = n1
+        Node2(index)           = n2
+        
+        pumps(i)%pump_curve      = pmp_curve
+        pumps(i)%pipe_diam       = diam
+        pumps(i)%pipe_length     = length
+        pumps(i)%friction_factor = fric_factor
+        pumps(i)%loss_coeff      = kloss
+
+        read(10,*) ctrl_type, ctrl_series, ctrl_node, ctrl_curve
+        
+        pumps(i)%control%setting  = setting
+        pumps(i)%control%tseries  = ctrl_series
+        pumps(i)%control%node     = ctrl_node
+        pumps(i)%control%curve    = ctrl_curve
+        ! Close rate doesn't apply to pumps
     end do
     
 end subroutine read_pump_data  
+
+
+subroutine read_orif_data(index)
+!==============================================================================
+! Read input data for orifices
+!==============================================================================
+integer, intent(inout) :: index
+integer :: i, k, n, n1, n2, ctrl_type
+integer :: orif_type, shape, flapgate, ctrl_series, ctrl_node, ctrl_curve
+real(8) :: offset, height, width, coeff, setting, adjust_rate
+character(IDLEN) :: id
+
+    read(10, *) n
+    if (n == 0) return
+    do i = 1, n
+        read(10, *) id, n1, n2, orif_type, shape, height, width, offset, coeff, &
+            flapgate, setting, adjust_rate
+
+        index = index + 1
+        link_id(index)         = id
+        link_type(index)       = ORIFICE
+        link_type_index(index) = i
+        Node1(index)           = n1
+        Node2(index)           = n2
+        
+        orifs(i)%orif_type = orif_type
+        orifs(i)%shape    = shape
+        orifs(i)%height   = height
+        orifs(i)%width    = width
+        orifs(i)%offset   = offset
+        orifs(i)%coeff    = coeff
+        orifs(i)%flapgate = flapgate
+
+        read(10,*) ctrl_type, ctrl_series, ctrl_node, ctrl_curve
+        
+        orifs(i)%control%setting     = setting
+        orifs(i)%control%adjust_rate = adjust_rate
+        orifs(i)%control%tseries     = ctrl_series
+        orifs(i)%control%node        = ctrl_node
+        orifs(i)%control%curve       = ctrl_curve
+    end do
+    
+end subroutine read_orif_data  
+
+
+subroutine read_weir_data(index)
+!==============================================================================
+! Read input data for weirs
+!==============================================================================
+integer, intent(inout) :: index
+integer :: i, k, n, n1, n2, ctrl_type
+integer :: weir_type, contractions, can_surcharge, ctrl_series, ctrl_node, ctrl_curve
+real(8) :: offset, height, length, slope, coeff, end_coeff, setting, adjust_rate
+character(IDLEN) :: id
+
+    read(10, *) n
+    if (n == 0) return
+    do i = 1, n
+        read(10, *) id, n1, n2, weir_type, height, length, offset, coeff, &
+            contractions, can_surcharge, setting, adjust_rate
+
+        index = index + 1
+        link_id(index)         = id
+        link_type(index)       = WEIR
+        link_type_index(index) = i
+        Node1(index)           = n1
+        Node2(index)           = n2
+        
+        weirs(i)%weir_type     = weir_type
+        weirs(i)%height        = height
+        weirs(i)%length        = length
+        weirs(i)%offset        = offset
+        weirs(i)%coeff         = coeff
+        weirs(i)%contractions  = contractions
+        weirs(i)%can_surcharge = can_surcharge
+       ! weirs(i)%slope         = slope
+       ! weirs(i)%end_coeff     = end_coeff
+
+        read(10,*) ctrl_type, ctrl_series, ctrl_node, ctrl_curve
+        
+        weirs(i)%control%setting     = setting
+        weirs(i)%control%adjust_rate = adjust_rate
+        weirs(i)%control%tseries     = ctrl_series
+        weirs(i)%control%node        = ctrl_node
+        weirs(i)%control%curve       = ctrl_curve
+    end do
+    
+end subroutine read_weir_data  
+
+
+subroutine read_outlet_data(index)
+!==============================================================================
+! Read input data for weirs
+!==============================================================================
+integer, intent(inout) :: index
+integer :: i, k, n, n1, n2
+integer :: flapgate, rating_curve
+real(8) :: offset
+character(IDLEN) :: id
+
+    read(10, *) n
+    if (n == 0) return
+    do i = 1, n
+        read(10, *) id, n1, n2, offset, flapgate, rating_curve
+
+        index = index + 1
+        link_id(index)         = id
+        link_type(index)       = OUTLET
+        link_type_index(index) = i
+        Node1(index)           = n1
+        Node2(index)           = n2
+        
+        outlets(i)%offset        = offset
+        outlets(i)%flapgate      = flapgate
+        outlets(i)%rating_curve  = rating_curve
+    end do
+    
+end subroutine read_outlet_data  
 
 
 subroutine read_inflow_data
@@ -533,8 +606,8 @@ integer, allocatable :: degree(:)
   
     ! Adjust boundary condition for junctions of degree 1
     do i = 1, Nnodes
-        if ((BCnode(i) == 7) .and. (degree(i) == 1)) then
-            BCnode(i) = 4
+        if ((BCnode(i) == JUNC2) .and. (degree(i) == 1)) then
+            BCnode(i) = DROPSHAFT
         end if
     end do
     deallocate(degree)
@@ -556,9 +629,9 @@ subroutine set_pump_limits
 integer :: i, c, j
 
     do i = 1, Npumps
-        c = pump_data(i)%pump_curve        
-        pump_data(i)%max_head = table_lookup(curve(c), 0d0, .TRUE.)
-        pump_data(i)%max_flow = table_get_x_max(curve(c))        
+        c = pumps(i)%pump_curve        
+        pumps(i)%max_head = table_lookup(curve(c), 0d0, .TRUE.)
+        pumps(i)%max_flow = table_get_x_max(curve(c))        
     end do
     
 end subroutine set_pump_limits

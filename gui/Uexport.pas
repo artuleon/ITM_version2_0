@@ -3,8 +3,8 @@ unit Uexport;
 {-------------------------------------------------------------------}
 {                    Unit:    Uexport.pas                           }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/24/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/04/23                              }
 {                                                                   }
 {   Delphi Pascal unit that exports current project data to a       }
 {   formatted text file.                                            }
@@ -30,6 +30,7 @@ uses
 
 var
   XflowCount : Integer;      // # nodes w/ external inflow
+  CtrlCount  : Integer;      // # links w/ controls
   Tab        : String;       // tab or space character
   SaveToPath : String;       // path of saved project file
   Hdr1, Hdr2, Hdr3: String;  // header strings
@@ -159,14 +160,14 @@ var
 begin
   if Project.Lists[BOUNDARY].Count = 0 then exit;
   S.Add('');
-  S.Add('[CONSTBOUNDS]');
+  S.Add('[BOUNDARIES]');
   Hdr1 := ';;              ' + Tab + 'Invert    ' + Tab + 'Boundary      ' + Tab + 'Dropshaft    ' + Tab + 'Boundary   ';
   Hdr2 := ';;Name          ' + Tab + 'Elev.     ' + Tab + 'Condition     ' + Tab + '(Ventilated)?' + Tab + 'Value      ';
   Hdr3 := ';;--------------' + Tab + '----------' + Tab + '--------------' + Tab + '-------------' + Tab + '-----------';
   S.Add(Hdr1);
   S.Add(Hdr2);
   S.Add(Hdr3);
-  
+
   with Project.Lists[BOUNDARY] do
     for I := 0 to Count-1 do
     begin
@@ -181,96 +182,6 @@ begin
     end;
 end;
 
-procedure ExportGates(S: TStringlist);
-//-----------------------------------------------------------------------------
-var
-  I         : Integer;
-  Line      : String;
-  N         : TNode;
-  CtrlType  : String;
-  CtrlSeries: String;
-  CtrlNode  : String;
-  CtrlCurve : String;
-begin
-  if Project.Lists[GATE].Count = 0 then exit;
-  S.Add('');
-  S.Add('[GATES]');
-  Hdr1 := ';;              ' + Tab + 'Invert  ' + Tab + 'Head Loss       ' + Tab + 'Control         ' + Tab;
-  Hdr2 := ';;Name          ' + Tab + 'Elev.   ' + Tab + 'Coeff. Curve    ' + Tab + 'Time Series     ' + Tab;
-  Hdr3 := ';;--------------' + Tab + '--------' + Tab + '----------------' + Tab + '----------------' + Tab;
-
-  Hdr1 := Hdr1 + 'Initial ' + Tab + 'Time To ' + Tab + 'Control         ' + Tab + 'Control         ';
-  Hdr2 := Hdr2 + 'Opening ' + Tab + 'Open    ' + Tab + 'Node            ' + Tab + 'Curve           ';
-  Hdr3 := Hdr3 + '--------' + Tab + '--------' + Tab + '----------------' + Tab + '----------------';
-
-  S.Add(Hdr1);
-  S.Add(Hdr2);
-  S.Add(Hdr3);
-
-  with Project.Lists[GATE] do
-  begin
-    for I := 0 to Count-1 do
-    begin
-      N := TNode(Objects[I]);
-      ExportComment(S, N.Data[COMMENT_INDEX]);
-      Line := Format('%-16s', [Strings[I]]);
-      Line := Line + Tab + Format('%-8s', [N.Data[NODE_INVERT_INDEX]]);
-      Line := Line + Tab + Format('%-16s', [N.Data[GATE_HLOSS_CURVE_INDEX]]);
-
-      CtrlType := N.Data[GATE_CONTROL_METHOD_INDEX];
-      CtrlSeries := '*';
-      CtrlNode := '';
-      CtrlCurve := '';
-      if SameText(CtrlType, ControlMethods[1]) then
-      begin
-        CtrlSeries := Trim(N.Data[GATE_TIME_SERIES_INDEX]);
-        if Length(CtrlSeries) = 0 then CtrlSeries := '*';
-      end
-      else if SameText(CtrlType, ControlMethods[2]) then
-      begin
-        CtrlNode := Trim(N.Data[GATE_CONTROL_NODE_INDEX]);
-        CtrlCurve := Trim(N.Data[GATE_CONTROL_CURVE_INDEX]);
-      end;
-
-      Line := Line + Tab + Format('%-16s', [CtrlSeries]);
-      Line := Line + Tab + Format('%-8s', [N.Data[GATE_INIT_OPENING_INDEX]]);
-      Line := Line + Tab + Format('%-8s', [N.Data[GATE_OPEN_RATE_INDEX]]);
-      Line := Line + Tab + Format('%-16s', [CtrlNode]);
-      Line := Line + Tab + Format('%-16s', [CtrlCurve]);
-      S.Add(Line);
-    end;
-  end;
-end;
-
-procedure ExportWeirs(S: TStringlist);
-//-----------------------------------------------------------------------------
-var
-  I    : Integer;
-  Line : String;
-  N    : TNode;
-begin
-  if Project.Lists[WEIR].Count = 0 then exit;
-  S.Add('');
-  S.Add('[RATINGUNIT]');
-  Hdr1 := ';;              ' + Tab + 'Invert  ' + Tab + 'Crest   ' + Tab + 'Rating          ';
-  Hdr2 := ';;Name          ' + Tab + 'Elev.   ' + Tab + 'Elev.   ' + Tab + 'Curve           ';
-  Hdr3 := ';;--------------' + Tab + '--------' + Tab + '--------' + Tab + '----------------';
-  S.Add(Hdr1);
-  S.Add(Hdr2);
-  S.Add(Hdr3);
-
-  with Project.Lists[WEIR] do
-    for I := 0 to Count-1 do
-    begin
-      N := TNode(Objects[I]);
-      ExportComment(S, N.Data[COMMENT_INDEX]);
-      Line := Format('%-16s', [Strings[I]]);
-      Line := Line + Tab + Format('%-8s', [N.Data[NODE_INVERT_INDEX]]);
-      Line := Line + Tab + Format('%-8s', [N.Data[WEIR_CREST_ELEV_INDEX]]);
-      Line := Line + Tab + Format('%-16s', [N.Data[WEIR_RATING_CURVE_INDEX]]);
-      S.Add(Line);
-    end;
-end;
 
 procedure ExportStorage(S: TStringlist);
 //-----------------------------------------------------------------------------
@@ -348,65 +259,181 @@ var
   I     : Integer;
   Line  : String;
   L     : TLink;
-  CtrlType  : String;
-  CtrlSeries: String;
-  CtrlNode  : String;
-  CtrlCurve : String;
 begin
-  if Project.GetPumpCount = 0 then exit;
+  if Project.Lists[PUMP].Count = 0 then exit;
   S.Add('');
   S.Add('[PUMPS]');
 
-  Hdr1 := ';;              ' + Tab + 'Pump            ' + Tab + 'Loss    ' + Tab;
-  Hdr2 := ';;Conduit       ' + Tab + 'Curve           ' + Tab + 'Coeff.  ' + Tab;
-  Hdr3 := ';;--------------' + Tab + '----------------' + Tab + '--------' + Tab;
+  Hdr1 := ';;              ' + Tab + 'Inlet           ' + Tab + 'Outlet          ' + Tab;
+  Hdr2 := ';;Name          ' + Tab + 'Node            ' + Tab + 'Node            ' + Tab;
+  Hdr3 := ';;--------------' + Tab + '----------------' + Tab + '----------------' + Tab;
 
-  Hdr1 := Hdr1 + 'Friction' + Tab + 'Initial ' + Tab + 'Control         ' + Tab;
-  Hdr2 := Hdr2 + 'Factor  ' + Tab + 'Setting ' + Tab + 'Time Series     ' + Tab;
-  Hdr3 := Hdr3 + '--------' + Tab + '--------' + Tab + '----------------' + Tab;
+  Hdr1 := Hdr1 + 'Pump            ' + Tab + 'Piping  ' + Tab + 'Piping  ' + Tab;
+  Hdr2 := Hdr2 + 'Curve           ' + Tab + 'Diam.   ' + Tab + 'Length  ' + Tab;
+  Hdr3 := Hdr3 + '----------------' + Tab + '--------' + Tab + '--------' + Tab;
 
-  Hdr1 := Hdr1 + 'Control         ' + Tab + 'Control         ';
-  Hdr2 := Hdr2 + 'Node            ' + Tab + 'Curve           ';
-  Hdr3 := Hdr3 + '----------------' + Tab + '----------------';
+  Hdr1 := Hdr1 + 'Frict.  ' + Tab + 'Loss    ' + 'Initial ';
+  Hdr2 := Hdr2 + 'Factor  ' + Tab + 'Coeff.  ' + 'Setting ';
+  Hdr3 := Hdr3 + '--------' + Tab + '--------' + '--------';
 
   S.Add(Hdr1);
   S.Add(Hdr2);
   S.Add(Hdr3);
 
-  with Project.Lists[CONDUIT] do
+  with Project.Lists[PUMP] do
     for I := 0 to Count-1 do
     begin
       L := TLink(Objects[I]);
-      if L.HasPump = False then continue;
+      ExportComment(S, L.Data[COMMENT_INDEX]);
       Line := Format('%-16s', [Strings[I]]);
+      Line := Line + Tab + Format('%-16s', [L.Node1.ID]);
+      Line := Line + Tab + Format('%-16s', [L.Node2.ID]);
       if Length(L.Data[PUMP_CURVE_INDEX]) = 0 then
         Line := Line + Tab + '*               '
       else
         Line := Line + Tab + Format('%-16s', [L.Data[PUMP_CURVE_INDEX]]);
-      Line := Line + Tab + Format('%-8s', [L.Data[PUMP_LOSS_COEFF_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[PUMP_DIAM_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[PUMP_LENGTH_INDEX]]);
       Line := Line + Tab + Format('%-8s', [L.Data[PUMP_FRICTION_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[PUMP_LOSS_COEFF_INDEX]]);
       Line := Line + Tab + Format('%-8s', [L.Data[PUMP_INIT_SETTING_INDEX]]);
-
-      CtrlType := L.Data[PUMP_CONTROL_METHOD_INDEX];
-      CtrlSeries := '*';
-      CtrlNode := '';
-      CtrlCurve := '';
-      if SameText(CtrlType, ControlMethods[1]) then
-      begin
-        CtrlSeries := Trim(L.Data[PUMP_TIME_SERIES_INDEX]);
-        if Length(CtrlSeries) = 0 then CtrlSeries := '*';
-      end
-      else if SameText(CtrlType, ControlMethods[2]) then
-      begin
-        CtrlNode := Trim(L.Data[PUMP_CONTROL_NODE_INDEX]);
-        CtrlCurve := Trim(L.Data[PUMP_CONTROL_CURVE_INDEX]);
-      end;
-      Line := Line + Tab + Format('%-16s', [CtrlSeries]);
-      Line := Line + Tab + Format('%-16s', [CtrlNode]);
-      Line := Line + Tab + Format('%-16s', [CtrlCurve]);
-
       S.Add(Line);
+      if not SameText(L.Data[PUMP_CONTROL_TYPE_INDEX], 'NONE') then Inc(CtrlCount);
     end;
+end;
+
+procedure ExportOrifices(S: TStringList);
+//-----------------------------------------------------------------------------
+var
+  I     : Integer;
+  Line  : String;
+  L     : TLink;
+begin
+  if Project.Lists[ORIFICE].Count = 0 then exit;
+  S.Add('');
+  S.Add('[ORIFICES]');
+
+  Hdr1 := ';;              ' + Tab + 'Inlet           ' + Tab + 'Outlet          ' + Tab;
+  Hdr2 := ';;Name          ' + Tab + 'Node            ' + Tab + 'Node            ' + Tab;
+  Hdr3 := ';;--------------' + Tab + '----------------' + Tab + '----------------' + Tab;
+
+  Hdr1 := Hdr1 + 'Orifice ' + Tab + 'Orifice ' + Tab + 'Inlet   ' + Tab;
+  Hdr2 := Hdr1 + 'Type    ' + Tab + 'Shape   ' + Tab + 'Offset  ' + Tab;
+  Hdr3 := Hdr1 + '--------' + Tab + '--------' + Tab + '--------' + Tab;
+
+  Hdr1 := Hdr1 + 'Disch.  ' + Tab + 'Flap    ' + Tab + 'Initial ' + Tab + 'Close   ';
+  Hdr2 := Hdr2 + 'Coeff.  ' + Tab + 'Gate    ' + Tab + 'Setting ' + Tab + 'Rate    ';
+  Hdr3 := Hdr3 + '--------' + Tab + '--------' + Tab + '--------' + Tab + '--------';
+
+  S.Add(Hdr1);
+  S.Add(Hdr2);
+  S.Add(Hdr3);
+
+  with Project.Lists[ORIFICE] do
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      ExportComment(S, L.Data[COMMENT_INDEX]);
+      Line := Format('%-16s', [Strings[I]]);
+      Line := Line + Tab + Format('%-16s', [L.Node1.ID]);
+      Line := Line + Tab + Format('%-16s', [L.Node2.ID]);
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_TYPE_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_SHAPE_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_BOTTOM_HT_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_COEFF_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_FLAPGATE_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_INIT_SETTING_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_CLOSE_RATE_INDEX]]);
+      S.Add(Line);
+      if not SameText(L.Data[ORIFICE_CONTROL_TYPE_INDEX], 'NONE') then Inc(CtrlCount);
+    end;
+end;
+
+procedure ExportWeirs(S: TStringList);
+//-----------------------------------------------------------------------------
+var
+  I     : Integer;
+  Line  : String;
+  L     : TLink;
+begin
+  if Project.Lists[WEIR].Count = 0 then exit;
+  S.Add('');
+  S.Add('[WEIRS]');
+
+  Hdr1 := ';;              ' + Tab + 'Inlet           ' + Tab + 'Outlet          ' + Tab;
+  Hdr2 := ';;Name          ' + Tab + 'Node            ' + Tab + 'Node            ' + Tab;
+  Hdr3 := ';;--------------' + Tab + '----------------' + Tab + '----------------' + Tab;
+
+  Hdr1 := Hdr1 + 'Weir    ' + Tab + 'Crest   ' + Tab + 'Disch.  ' + Tab;
+  Hdr2 := Hdr2 + 'Type    ' + Tab + 'Offset  ' + Tab + 'Coeff.  ' + Tab;
+  Hdr3 := Hdr3 + '--------' + Tab + '--------' + Tab + '--------' + Tab;
+
+  Hdr1 := Hdr1 + 'End     ' + Tab + 'Can     ' + Tab + 'Initial ' + Tab + 'Close   ';
+  Hdr2 := Hdr2 + 'Cons.   ' + Tab + 'Surchg. ' + Tab + 'Setting ' + Tab + 'Rate    ';
+  Hdr3 := Hdr3 + '--------' + Tab + '--------' + Tab + '--------' + Tab + '--------';
+
+  S.Add(Hdr1);
+  S.Add(Hdr2);
+  S.Add(Hdr3);
+
+  with Project.Lists[WEIR] do
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      ExportComment(S, L.Data[COMMENT_INDEX]);
+      Line := Format('%-16s', [Strings[I]]);
+      Line := Line + Tab + Format('%-16s', [L.Node1.ID]);
+      Line := Line + Tab + Format('%-16s', [L.Node2.ID]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_TYPE_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_CREST_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_COEFF_INDEX]]);
+//      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_FLAPGATE_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_CONTRACT_INDEX]]);
+//      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_END_COEFF_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_SURCHARGE_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_INIT_SETTING_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_CLOSE_RATE_INDEX]]);
+      S.Add(Line);
+      if not SameText(L.Data[WEIR_CONTROL_TYPE_INDEX], 'NONE') then Inc(CtrlCount);
+    end;
+end;
+
+procedure ExportOutlets(S: TStringList);
+//-----------------------------------------------------------------------------
+var
+  I     : Integer;
+  Line  : String;
+  L     : TLink;
+begin
+  if Project.Lists[OUTLET].Count = 0 then exit;
+  S.Add('');
+  S.Add('[OUTLETS]');
+
+  Hdr1 := ';;              ' + Tab + 'Inlet           ' + Tab + 'Outlet          ' + Tab;
+  Hdr2 := ';;Name          ' + Tab + 'Node            ' + Tab + 'Node            ' + Tab;
+  Hdr3 := ';;--------------' + Tab + '----------------' + Tab + '----------------' + Tab;
+
+  Hdr1 := Hdr1 + 'Inlet   ' + Tab + 'Flap    ' + Tab + 'Rating  ';
+  Hdr2 := Hdr1 + 'Offset  ' + Tab + 'Gate    ' + Tab + 'Curve   ';
+  Hdr3 := Hdr1 + '--------' + Tab + '--------' + Tab + '--------';
+
+  S.Add(Hdr1);
+  S.Add(Hdr2);
+  S.Add(Hdr3);
+
+  with Project.Lists[OUTLET] do
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      ExportComment(S, L.Data[COMMENT_INDEX]);
+      Line := Format('%-16s', [Strings[I]]);
+      Line := Line + Tab + Format('%-16s', [L.Node1.ID]);
+      Line := Line + Tab + Format('%-16s', [L.Node2.ID]);
+      Line := Line + Tab + Format('%-8s', [L.Data[OUTLET_OFFSET_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[OUTLET_FLAPGATE_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[OUTLET_CURVE_INDEX]]);
+      S.Add(Line);
+      end;
 end;
 
 procedure ExportXsections(S: TStringlist);
@@ -415,15 +442,17 @@ var
   I     : Integer;
   Line  : String;
   L     : TLink;
+  Shape : String;
 begin
   if Project.Lists[CONDUIT].Count = 0 then exit;
   S.Add('');
   S.Add('[XSECTIONS]');
-  Line := ';;Link          ' + Tab + 'Shape       ' + Tab + 'Diameter        ';
+  Line := ';;Link          ' + Tab + 'Shape       ' + Tab + 'Height  ' + Tab + 'Width   ' + Tab + 'Slope   ';
   S.Add(Line);
-  Line := ';;--------------' + Tab + '------------' + Tab + '----------------';
+  Line := ';;--------------' + Tab + '------------' + Tab + '--------' + tab + '--------' + Tab + '--------';
   S.Add(Line);
   with Project.Lists[CONDUIT] do
+  begin
     for I := 0 to Count-1 do
     begin
       L := TLink(Objects[I]);
@@ -432,6 +461,43 @@ begin
       Line := Line + Tab + Format('%-16s', [L.Data[CONDUIT_DIAMETER_INDEX]]);
       S.Add(Line);
     end;
+  end;
+  with Project.Lists[ORIFICE] do
+  begin
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      Line := Format('%-16s', [Strings[I]]);
+      if SameText(L.Data[ORIFICE_SHAPE_INDEX], 'CIRCULAR') then
+        Line := Line + Tab + 'CIRCULAR    '
+      else
+        Line := Line + Tab + 'RECT_CLOSED ';
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_HEIGHT_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[ORIFICE_WIDTH_INDEX]]);
+      S.Add(Line);
+    end;
+  end;
+  with Project.Lists[WEIR] do
+  begin
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      Line := Format('%-16s', [Strings[I]]);
+      Shape := 'RECT_OPEN   ';
+      if SameText(L.Data[WEIR_TYPE_INDEX], 'SIDEFLOW') then
+        Shape := 'RECT_OPEN   '
+      else if SameText(L.Data[WEIR_TYPE_INDEX], 'V-NOTCH') then
+        Shape := 'TRIANGULAR  '
+      else if SameText(L.Data[WEIR_TYPE_INDEX], 'TRAPEZOIDAL') then
+        Shape := 'TRAPEZOIDAL ';
+      Line := Line + Tab + Format('%-12s', [Shape]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_HEIGHT_INDEX]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_WIDTH_INDEX]]);
+//      Line := Line + Tab + Format('%-8s', [L.Data[WEIR_SLOPE_INDEX]]);
+      S.Add(Line);
+    end;
+  end;
+
 end;
 
 procedure ExportLosses(S: TStringlist);
@@ -460,6 +526,64 @@ begin
     Line := Line + Tab + Format('%-10s', [L.Data[CONDUIT_EXIT_LOSS_INDEX]]);
     S.Add(Line);
   end;
+end;
+
+procedure ExportControls(S: TStringlist);
+var
+  I, J, CtrlIndex: Integer;
+  Line: String;
+  L: TLink;
+begin
+  if CtrlCount = 0 then exit;
+  S.Add('');
+  S.Add('[CONTROLS]');
+
+  Hdr1 := ';;              ' + Tab + 'Time to ' + Tab + 'Control ' + Tab;
+  Hdr2 := ';;Link          ' + Tab + 'Close   ' + Tab + 'Type    ' + Tab;
+  Hdr3 := ';;--------------' + Tab + '--------' + Tab + '--------' + Tab;
+
+  Hdr1 := Hdr1 + 'Control         ' + Tab + 'Control         ' + Tab + 'Control         ';
+  Hdr2 := Hdr2 + 'Series          ' + Tab + 'Node            ' + Tab + 'Curve           ';
+  Hdr3 := Hdr3 + '----------------' + Tab + '----------------' + Tab + '----------------';
+
+  S.Add(Hdr1);
+  S.Add(Hdr2);
+  S.Add(Hdr3);
+
+  for I := PUMP to WEIR do
+  begin
+    case I of
+    PUMP:    CtrlIndex := PUMP_CONTROL_TYPE_INDEX;
+    ORIFICE: CtrlIndex := ORIFICE_CONTROL_TYPE_INDEX;
+    WEIR:    CtrlIndex := WEIR_CONTROL_TYPE_INDEX;
+    end;
+
+    for J := 0 to Project.Lists[I].Count-1 do
+    begin
+      L := Project.GetLink(I, J);
+      if SameText(L.Data[CtrlIndex], 'NONE') then continue;
+      Line := Format('%-16s', [Project.Lists[I].Strings[J]]);
+      Line := Line + Tab + Format('%-8s', [L.Data[CtrlIndex]]);
+      if I = PUMP then
+      begin
+        Line := Line + Tab + '0       ';
+      end
+      else
+      begin
+        Line := Line + Tab + Format('%-8s', [L.Data[CtrlIndex + 1]]);
+        Inc(CtrlIndex);
+      end;
+      if SameText(L.Data[CtrlIndex], 'TIME') then
+        Line := Line + Tab + Format('%-16s', [L.Data[CtrlIndex + 1]])
+      else begin
+        Line := Line + Tab + '*               ';
+        Line := Line + Tab + Format('%-16s', [L.Data[CtrlIndex + 2]]);
+        Line := Line + Tab + Format('%-16s', [L.Data[CtrlIndex + 3]]);
+      end;
+      S.Add(Line);
+    end;
+  end;
+
 end;
 
 function GetInflowLine(aNode: TNode): String;
@@ -578,10 +702,7 @@ begin
         aCurve := TCurve(Objects[J]);
         ExportComment(S, aCurve.Comment);
         N := MinIntValue([aCurve.Xdata.Count, aCurve.Ydata.Count]);
-        if SameText(aCurve.CurveType, 'PUMP') then
-          CurveType := 'PUMP3'
-        else
-          CurveType := aCurve.CurveType;
+        CurveType := aCurve.CurveType;
         if N > 0 then
         begin
           if M > 0 then S.Add('') else M := 1;
@@ -861,6 +982,7 @@ procedure ExportProject(S: TStringlist);
 begin
   if Uglobals.TabDelimited then Tab := #9 else Tab := ' ';
   XflowCount := 0;
+  CtrlCount := 0;
 
   ExportTitle(S);
   ExportOptions(S);
@@ -870,14 +992,16 @@ begin
   //******************************************************
   ExportJunctions(S);
   ExportBoundaries(S);
-  ExportGates(S);
-  ExportWeirs(S);
   ExportStorage(S);
   ExportConduits(S);
   ExportPumps(S);
+  ExportOrifices(S);
+  ExportWeirs(S);
+  ExportOutlets(S);
   //******************************************************
   ExportXsections(S);
   ExportLosses(S);
+  ExportControls(S);
   ExportInflows(S);
   ExportCurves(S);
   ExportTimeseries(S);

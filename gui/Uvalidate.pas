@@ -3,8 +3,8 @@ unit Uvalidate;
 {-------------------------------------------------------------------}
 {                    Unit:    Uvalidate.pas                         }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/20/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/06/23                              }
 {                                                                   }
 {   Delphi Pascal unit that validates new values for edited         }
 {   properties of ITM objects.                                      }
@@ -67,13 +67,6 @@ begin
     if I in [NODE_INVERT_INDEX, BOUNDARY_VALUE_INDEX] then
       Result := IsNotBlank(S);
 
-  GATE:
-    if I in [NODE_INVERT_INDEX, GATE_OPEN_RATE_INDEX] then
-      Result := IsNotBlank(S);
-
-  WEIR:
-    if I = NODE_INVERT_INDEX then Result := IsNotBlank(S);
-
   STORAGE:
     if I in [NODE_INVERT_INDEX, STORAGE_MAX_DEPTH_INDEX,
              STORAGE_INIT_DEPTH_INDEX, STORAGE_OUTFLOW_INDEX] then
@@ -89,6 +82,34 @@ begin
     else if I in [CONDUIT_DIAMETER_INDEX..CONDUIT_EXIT_LOSS_INDEX,
                   CONDUIT_DEPTH_VALUE_INDEX, CONDUIT_INIT_FLOW_INDEX]
     then Result := IsNotBlank(S);
+
+  PUMP:
+    if I in [PUMP_DIAM_INDEX .. PUMP_INIT_SETTING_INDEX] then
+      Result := IsNotBlank(S);
+
+  ORIFICE:
+    if (I in [ORIFICE_HEIGHT_INDEX .. ORIFICE_COEFF_INDEX]) and IsZero(S) then
+    begin
+      Result := False;
+      ErrMsg := MSG_ZERO_VALUE;
+      Exit;
+    end
+    else if I in [ORIFICE_TYPE_INDEX .. ORIFICE_INIT_SETTING_INDEX] then
+      Result := IsNotBlank(S);
+
+  WEIR:
+    if (I in [WEIR_HEIGHT_INDEX, WEIR_WIDTH_INDEX, WEIR_COEFF_INDEX]) and IsZero(S) then
+    begin
+      Result := False;
+      ErrMsg := MSG_ZERO_VALUE;
+      Exit;
+    end
+    else if I in [WEIR_TYPE_INDEX .. WEIR_INIT_SETTING_INDEX] then
+      Result := IsNotBlank(S);
+
+  OUTLET:
+    if (I in [OUTLET_OFFSET_INDEX]) then
+      Result := IsNotBlank(S);
   end;
 
   if not Result then ErrMsg := MSG_NO_DATA;
@@ -160,8 +181,6 @@ begin
   case EditorObject of
     JUNCTION:   Last := High(JunctionProps);
     BOUNDARY:   Last := High(BoundaryProps);
-    GATE:       Last := High(GateProps);
-    WEIR:       Last := High(WeirProps);
     STORAGE:    Last := High(StorageProps);
     else        Last := -1;
   end;
@@ -199,8 +218,6 @@ begin
     begin
       N.Data[I] := S;
       Uupdate.UpdateNodeColor(EditorObject, EditorIndex, I);
-      if (EditorObject = GATE) and (I = GATE_CONTROL_METHOD_INDEX) then
-        Uupdate.EditGate;
     end
     else Result := False;
   end;
@@ -214,11 +231,17 @@ function ValidateLink(I: Integer; var S: String): Boolean;
 var
   Last: Integer;
   L   : TLink;
-
-  OldHasPump : Boolean;
+  ReEdit : Boolean;
 begin
   L := Project.GetLink(EditorObject, EditorIndex);
-  Last := High(ConduitProps);
+  case EditorObject of
+    CONDUIT: Last := High(ConduitProps);
+    PUMP:    Last := High(PumpProps);
+    ORIFICE: Last := High(OrificeProps);
+    WEIR:    Last := High(WeirProps);
+    OUTLET:  Last := High(OutletProps);
+    else     Last := -1;
+  end;
   Result := True;
 
   // For ID name, make sure its not a duplicate
@@ -244,17 +267,13 @@ begin
     begin
       L.Data[I] := S;
       Uupdate.UpdateLinkColor(EditorObject, EditorIndex, I);
-
-      if I = CONDUIT_HAS_PUMP_INDEX then
-      begin
-        OldHasPump := L.HasPump;
-        L.hasPump := SameText(S, 'YES');
-        if L.HasPump <> OldHasPump then
-          MapForm.DrawObject(CONDUIT, EditorIndex);
+      case EditorObject of
+        PUMP:    ReEdit := (I = PUMP_CONTROL_TYPE_INDEX);
+        ORIFICE: ReEdit := (I = ORIFICE_CONTROL_TYPE_INDEX);
+        WEIR:    ReEdit := (I = WEIR_CONTROL_TYPE_INDEX);
+        else     ReEdit := False;
       end;
-
-      if (I = CONDUIT_HAS_PUMP_INDEX) or (I = PUMP_CONTROL_METHOD_INDEX) then
-        Uupdate.EditConduit;
+      if ReEdit then Uupdate.UpdateControls(EditorObject);
     end
     else Result := False;
   end;
@@ -313,7 +332,7 @@ begin
   E := '';
   case EditorObject of
     JUNCTION..STORAGE:  Result := ValidateNode(I, S);
-    CONDUIT:            Result := ValidateLink(I, S);
+    CONDUIT..OUTLET:    Result := ValidateLink(I, S);
     MAPLABEL:           Result := ValidateLabel(I, S);
     else                Result := False;
   end;

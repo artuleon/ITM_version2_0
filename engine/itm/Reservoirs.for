@@ -75,12 +75,15 @@
 	    yres_jun_old(R) = ydropmin(R); Outflow_limited(R) = 0
       endif
       
-      call itm_get_storage(R,yres_jun_old(R),Stora_old) 
+      call itm_get_storage_volume(R,yres_jun_old(R),Stora_old) 
       
       if (Stora_old < 0d0)then
           write(98,*),'Storage data must start with zero depth. Reserv.'
           call endprog; GLOBAL_STATUS_FLAG = 1; return
       endif
+
+    !    write(98,*) ' '
+    !    write(98,*) yres_jun_old(R),Stora_old
       
       !Storage_new = 100000
       ! call itm_get_storage_depth(R,Storage_new, yres) 
@@ -96,9 +99,9 @@
       !  call endprog; GLOBAL_STATUS_FLAG = 1; return         
       
       
-      !If there are only pumps connected to the reservoir node      
+      !If there are no pipes connected to the reservoir node      
       if (NodeNS(R) == 0)then  !NodeNS(R) = Number of pipes connected to each node     
-          temp3 = PumpFlowToNode(R) - Outflow_limited(R)
+          temp3 = NonPipeFlowToNode(R) - Outflow_limited(R)
           Storage_new = Stora_old + temp3*dt
           call itm_get_storage_depth(R,Storage_new, yres) 
           
@@ -340,9 +343,9 @@ c     If depths are shallow, solve Riemann problem instead of junction equations
       !Storage equation		
 24	if (Nodetype(R,1) == 2)then !outflowing
 		!sign for Qb is negative for upstream reservoir
-		inflowtemp = (PumpFlowToNode(R)-Qb - Outflow_limited(R))*dt
+		inflowtemp = (NonPipeFlowToNode(R)-Qb - Outflow_limited(R))*dt
 	Elseif (Nodetype(R,1) == 1)then !inflowing	
-		inflowtemp = (PumpFlowToNode(R)+Qb - Outflow_limited(R))*dt 
+		inflowtemp = (NonPipeFlowToNode(R)+Qb - Outflow_limited(R))*dt 
 	else
 		write(98,*),'Nodetype(R,1) .ne. 1,2. Subr. reservoirs'
 		call endprog; GLOBAL_STATUS_FLAG = 1; return
@@ -573,12 +576,12 @@ c     If depths are shallow, solve Riemann problem instead of junction equations
 	endif
 	
 	!Storage equation
-	call itm_get_storage(R,x(2),Stora_new) 
+	call itm_get_storage_volume(R,x(2),Stora_new) 
 	if (Nodetype(R,1) == 2)then !outflowing
 		!sign for x(3) is negative for upstream reservoir
-		res_temp = -x(3) + PumpFlowToNode(R) - Outflow_limited(R)
+		res_temp = -x(3) + NonPipeFlowToNode(R) - Outflow_limited(R)
 	Elseif (Nodetype(R,1) == 1)then !inflowing
-		res_temp = x(3)  + PumpFlowToNode(R) - Outflow_limited(R)
+		res_temp = x(3)  + NonPipeFlowToNode(R) - Outflow_limited(R)
 	else
 		write(98,*),'Nodetype(R,1) .ne. 1,2. Subr. reservoir'
 		call endprog; GLOBAL_STATUS_FLAG = 1; return

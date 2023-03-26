@@ -82,8 +82,6 @@
 		<File RelativePath="..\itm\endprog.f90"/>
 		<File RelativePath="..\itm\Fluxes_boundary_HLL_Leon.for"/>
 		<File RelativePath="..\itm\Freesurface_flowregime.for"/>
-		<File RelativePath="..\itm\Gate_one_pipe.for"/>
-		<File RelativePath="..\itm\Gate_two_pipes.for"/>
 		<File RelativePath="..\itm\H_from_Area.for"/>
 		<File RelativePath="..\itm\H_from_Phi.for"/>
 		<File RelativePath="..\itm\H_from_Phi_Raref.for"/>
@@ -95,9 +93,9 @@
 		<File RelativePath="..\itm\itm_hotstart.f90"/>
 		<File RelativePath="..\itm\itm_init.f90"/>
 		<File RelativePath="..\itm\itm_input.f90"/>
+		<File RelativePath="..\itm\itm_links.f90"/>
 		<File RelativePath="..\itm\itm_main.f90"/>
 		<File RelativePath="..\itm\itm_output.f90"/>
-		<File RelativePath="..\itm\itm_pump.f90"/>
 		<File RelativePath="..\itm\itm_solver.f90"/>
 		<File RelativePath="..\itm\itm_table.f90"/>
 		<File RelativePath="..\itm\junct2pipes_same_diam.for"/>
@@ -105,9 +103,8 @@
 		<File RelativePath="..\itm\minpack.f90"/>
 		<File RelativePath="..\itm\Phi1.for"/>
 		<File RelativePath="..\itm\Pressure_Pho.for"/>
-		<File RelativePath="..\itm\Rating_curve.for"/>
 		<File RelativePath="..\itm\Reservoirs.for"/>
 		<File RelativePath="..\itm\Riemann_Mixed_HLL_Leon.for"/>
-		<File RelativePath="..\itm\Util.for"/>
+		<File RelativePath="..\itm\itm_util.f90"/>
 		<File RelativePath="..\itm\Util_star.for"/></Filter></Files>
 	<Globals/></VisualStudioProject>

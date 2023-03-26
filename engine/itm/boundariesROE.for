@@ -39,14 +39,16 @@
 			call Dropshaft_general(time,Dt,R)
           elseIf(BCnode(R) == 10 .or. BCnode(R) == 11)then  !constant boundary
               call const_bound(R)
-		elseIf(BCnode(R) == 30)then !Rating curve boundary
-			call Rating_curve(R)								
-		elseIf(BCnode(R) == 40)then !Gate Boundary condition (Two pipes)
-			!It supports both open-channel and pressurized flow			
-			call Gate_two_pipes(time,Dt,R)
-		elseIf(BCnode(R) == 41)then !Gate Boundary condition (one pipe)
-			!It supports both open-channel and pressurized flow			
-			call Gate_one_pipe(time,Dt,R)				
+              
+! -- NO LONGER SUPPORTED              
+!		elseIf(BCnode(R) == 30)then !Rating curve boundary
+!  			call Rating_curve(R)								
+!		elseIf(BCnode(R) == 40)then !Gate Boundary condition (Two pipes)
+!			!It supports both open-channel and pressurized flow			
+!			call Gate_two_pipes(time,Dt,R)
+!		elseIf(BCnode(R) == 41)then !Gate Boundary condition (one pipe)
+!			!It supports both open-channel and pressurized flow			
+!			call Gate_one_pipe(time,Dt,R)				
 		else
 			write(98,*),'Subr. boundaries. Type not supported'
               write(99,*),'Subr. boundaries. Type not supported'

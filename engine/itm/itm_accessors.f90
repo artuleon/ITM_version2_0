@@ -128,119 +128,42 @@ real(8), intent(out) :: max_head
 end subroutine itm_get_max_rating_head
 
 
-subroutine itm_get_storage(node_index, depth, storage)
+subroutine itm_get_storage_volume(node_index, depth, volume)
 !====================================================================
 ! Retrieve the volume in a storage node at a given water depth. 
 !====================================================================
 integer, intent(in ) :: node_index
 real(8), intent(in ) :: depth
-real(8), intent(out) :: storage
+real(8), intent(out) :: volume
 integer :: k
 
-    storage = 0.0
-    if (depth == 0.0) return
+    volume = 0.0
+    if (depth == 0.0 .or. node_type(node_index) .ne. STORAGE) return
     k = node_curve(node_index)
     if (k > 0) then
-        storage = table_lookup(curve(k), depth, .TRUE.)
+        volume = table_lookup(curve(k), depth, .TRUE.)
     end if
 
-end subroutine itm_get_storage
+end subroutine itm_get_storage_volume
 
 
-subroutine itm_get_storage_depth(node_index, storage, depth)
+subroutine itm_get_storage_depth(node_index, volume, depth)
 !====================================================================
 ! Retrieve the water depth in a storage node at a given stored volume. 
 !====================================================================
 integer, intent(in ) :: node_index
-real(8), intent(in ) :: storage
+real(8), intent(in ) :: volume
 real(8), intent(out) :: depth
 integer :: k
 
     depth = 0.0
-    if (storage == 0.0) return
+    if (volume == 0.0 .or. node_type(node_index) .ne. STORAGE) return
     k = node_curve(node_index)
     if (k > 0) then
-        depth = table_reverse_lookup(curve(k), storage, .TRUE.)
+        depth = table_reverse_lookup(curve(k), volume, .TRUE.)
     end if
 
 end subroutine itm_get_storage_depth
-
-
-function itm_get_gate_opening(node_index, time, dt, opening) &
-    result(new_opening)
-!====================================================================
-! Retrieve the percent open of a gate node at a specific time
-! (if time controlled) or for a specific control node depth.
-!====================================================================
-integer, intent(in ) :: node_index
-real(8), intent(in ) :: time          ! elapsed time
-real(8), intent(in ) :: dt            ! time step
-real(8), intent(in ) :: opening       ! current percent opening
-real(8)              :: new_opening   ! new percent opening
-
-real(8) :: target_opening, orate, ostep, delta
-integer :: i, j, k
-
-character(64) :: fmt
-
-    ! Retrieve gate control parameters
-    i = gate_data(node_index)%control_tseries
-    j = gate_data(node_index)%control_node
-    k = gate_data(node_index)%control_curve
-    orate = gate_data(node_index)%opening_rate * 60d0
-    
-    ! Find a new target percent opening
-    if (i > 0) then
-        target_opening = table_tseries_lookup(tseries(i), time, .FALSE., .TRUE.)
-    else if (j > 0 .and. k > 0) then
-        target_opening = table_lookup(curve(k), yres_jun_old(j), .FALSE.)
-    else
-        target_opening = opening
-    end if
-    gate_data(node_index)%target_opening = target_opening
-    
-    ! New opening equals target if current opening equals target
-    ! or time to open is 0 
-    if (target_opening .eq. opening .or. orate .eq. 0d0) then
-        new_opening = target_opening
-        
-    ! Otherwise change in current opening is fractional difference between it
-    ! and target opening achieved over the current time step
-    else
-        delta = (target_opening - opening) / 100d0
-        ostep = dt / orate
-        if (ostep + 0.001 >= abs(delta)) then
-            new_opening = target_opening
-        else
-            new_opening = opening + sign(1d0, delta)*ostep*100d0
-        end if
-    end if
-    
-    ! Make sure new opening is feasible
-    new_opening = min(new_opening, 100d0)
-    new_opening = max(new_opening, 0d0)
-    
-end function itm_get_gate_opening
-
-  
-subroutine itm_get_gate_loss_coeff(node_index, opening, coeff)
-!====================================================================
-! Retrieve the head loss coefficient for a gate node at a specific
-! percent open.
-!====================================================================
-integer, intent(in ) :: node_index
-real(8), intent(in ) :: opening    
-real(8), intent(out) :: coeff
-integer :: k
-
-    k = node_curve(node_index)
-    if (k > 0) then
-        coeff = table_lookup(curve(k), opening, .TRUE.)
-    else
-        coeff = -1d0
-    end if
-    
-end subroutine itm_get_gate_loss_coeff
 
 !--------------------------------------------------------------------
 

@@ -238,7 +238,6 @@ begin
 }
   itm_export.SaveToItmFile(TempInputFile);
 
-
   // Have the ITM solver read the input data file
   ProgressLabel.Caption := TXT_READING;
   ProgressLabel.Refresh;
@@ -246,7 +245,7 @@ begin
 //  DebugFile := InputFileName + '.debug.txt';
 //  ErrorFile := InputFileName + '.error.txt';
 
-  Err := ITM_DLL_INIT(
+  Err := itm_dll_init(
         PAnsiChar(AnsiString(TempInputFile)),
         PAnsiChar(AnsiString(TempReportFile)),
         PAnsiChar(AnsiString(TempOutputFile)),
@@ -263,12 +262,12 @@ begin
  //     length(ProjectDir));
 
   // If there are no input errors, then initialize the simulation
-{  if Err = 0 then
-  begin
-    ProgressLabel.Caption := TXT_CHECKING;
-    ProgressLabel.Refresh;
-  end;
-}
+//  if Err = 0 then
+//  begin
+//    ProgressLabel.Caption := TXT_CHECKING;
+//    ProgressLabel.Refresh;
+//  end;
+
   // If there are no initialization errors, then...
   if Err = 0 then
   begin
@@ -306,6 +305,7 @@ begin
   ErrVolume := 0;
   if Err = 0 then
     itm_get_mass_bal_error(ErrVolume);
+
 end;
 
 

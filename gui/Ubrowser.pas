@@ -3,8 +3,8 @@ unit Ubrowser;
 {-------------------------------------------------------------------}
 {                    Unit:    Ubrowser.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/20/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/03/23                              }
 {                                                                   }
 {   Delphi Pascal unit containing procedures called by event        }
 {   handlers for the Browser panel components of the MainForm.      }
@@ -319,20 +319,21 @@ begin
 
     3:  Result := JUNCTION;
     4:  Result := BOUNDARY;
-    5:  Result := GATE;
-    6:  Result := WEIR;
-    7:  Result := STORAGE;
+    5:  Result := STORAGE;
 
-    9:  Result := CONDUIT;
+    7:  Result := CONDUIT;
+    8:  Result := PUMP;
+    9:  Result := ORIFICE;
+    10: Result := WEIR;
+    11: Result := OUTLET;
 
-    11: Result := GATECURVE;
-    12: Result := RATINGCURVE;
     13: Result := STORAGECURVE;
     14: Result := PUMPCURVE;
-    15: Result := CONTROLCURVE;
+    15: Result := RATINGCURVE;
+    16: Result := CONTROLCURVE;
 
-    16: Result := TIMESERIES;
-    17: Result := MAPLABEL;
+    17: Result := TIMESERIES;
+    18: Result := MAPLABEL;
 
     else Result := -1;
   end;
@@ -351,20 +352,21 @@ begin
 
     JUNCTION:     Result := 3;
     BOUNDARY:     Result := 4;
-    GATE:         Result := 5;
-    WEIR:         Result := 6;
-    STORAGE:      Result := 7;
+    STORAGE:      Result := 5;
 
-    CONDUIT:      Result := 9;
+    CONDUIT:      Result := 7;
+    PUMP:         Result := 8;
+    ORIFICE:      Result := 9;
+    WEIR:         Result := 10;
+    OUTLET:       Result := 11;
 
-    GATECURVE:    Result := 11;
-    RATINGCURVE:  Result := 12;
     STORAGECURVE: Result := 13;
     PUMPCURVE:    Result := 14;
-    CONTROLCURVE: Result := 15;
+    RATINGCURVE:  Result := 15;
+    CONTROLCURVE: Result := 16;
 
-    TIMESERIES:   Result := 16;
-    MAPLABEL:     Result := 17;
+    TIMESERIES:   Result := 17;
+    MAPLABEL:     Result := 18;
 
     else          Result := 0;
   end;
@@ -1069,7 +1071,7 @@ begin
   for I := ID_INDEX to NODE_INVERT_INDEX do newNode.Data[I] := oldNode.Data[I];
 
   // Replace reference to old Node with new Node in all attached links
-  I := CONDUIT;
+  for I := CONDUIT to OUTLET do
   begin
     for J := Project.Lists[I].Count-1 downto 0 do
     begin

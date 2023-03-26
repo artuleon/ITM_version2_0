@@ -3,8 +3,8 @@ unit Uoutput;
 {-------------------------------------------------------------------}
 {                    Unit:    Uoutput.pas                           }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/25/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/16/23                              }
 {                                                                   }
 {   Delphi Pascal unit used for retrieving output results from      }
 {   a simulation run by ITM.                                        }
@@ -122,6 +122,7 @@ var
   NumLinkInputs : Integer;
   NumNodeOutputs : Integer;
   NumLinkOutputs : Integer;
+  NumPipeLinks : Integer;
 
   Fitm  : File;
   MaxITMCells: LongInt;
@@ -306,7 +307,7 @@ procedure GetBasicOutput;
 var
   I, J, K       : Integer;
   Dummy         : Integer;
-  ReportStep    : Integer;
+  ReportStep    : Double;
   aNode         : TNode;
   aLink         : TLink;
   S             : String;
@@ -332,7 +333,8 @@ begin
   //   Offset2 is # bytes used for output results in each reporting period
   Offset0 := RecordSize * (5 + 4);
   Offset1 := Offset0 + RecordSize *
-             (Nnodes * NumNodeInputs + Nlinks * NumLinkInputs);
+             (Nnodes * NumNodeInputs + Nlinks * NumLinkInputs) +
+             (2 * Sizeof(TDateTime));
   Offset2 := Sizeof(TDateTime) + RecordSize *
              (Nnodes * NumNodeOutputs + Nlinks * NumLinkOutputs);
 
@@ -371,15 +373,19 @@ begin
     end;
   end;
 
-  // For each CONDUIT assign an index into the results array
+  // For each link assign an index into the results array
   K := 0;
-  I := CONDUIT;
+  NumPipeLinks := Project.Lists[CONDUIT].Count;
+  for I := CONDUIT to OUTLET do
   begin
     for J := 0 to Project.Lists[I].Count - 1 do
     begin
       aLink := Project.GetLink(I, J);
       aLink.Zindex := K;
-      aLink.ITMindex := J;
+      if I = CONDUIT then
+        aLink.ITMindex := J
+      else
+        aLink.ITMindex := -1;
       Inc(K);
     end;
   end;
@@ -575,7 +581,7 @@ function GetITMLinkOutVal(const LinkIndex: Integer;
 //var Flows: array of Double; ; var Energy: array of Double
 
 //-----------------------------------------------------------------------------
-//  Returns the values (flow or depth) along a given reach that ITM computed.
+//  Returns distances & water depths ITM computed for a specific pipe.
 //-----------------------------------------------------------------------------
 var
   P: Int64;
@@ -588,27 +594,35 @@ begin
   if (LinkIndex >= 0) and Uglobals.ITMFileOpen = True then
   begin
     // The size of an individual record for a given link.
+    // (time, link index, number of cells)
+    // (stations for MaxItmCells)
+    // (depths for MaxItmCells)
     RecSize := (SizeOf(Double) + SizeOf(Integer) * 2 +
                 SizeOf(Double) * MaxITMCells * 2);
 
-    P := SizeOf(Integer) + (Period - 1) * Nlinks * RecSize;
+    // File offset to start of data for specified Period
+    // (first value in file is MaxItmCells)
+    P := SizeOf(Integer) + (Period - 1) * NumPipeLinks * RecSize;
     if (P < 0) then
       P := SizeOf(Integer);
 
-    // Seek to the link
+    // File position where data for specified link begins
+    // (LinkIndex is 0-based)
     Seek(Fitm, P + LinkIndex * RecSize);
 
     // Grab the data from the link
-    BlockRead(Fitm, TS, SizeOf(Double), Res);
-    BlockRead(Fitm, ID, SizeOf(Integer), Res);
-    BlockRead(Fitm, Count, SizeOf(Integer), Res);
+    BlockRead(Fitm, TS, SizeOf(Double), Res);            //Time stamp
+    BlockRead(Fitm, ID, SizeOf(Integer), Res);           //ITM link index
+    BlockRead(Fitm, Count, SizeOf(Integer), Res);        //Number of cells
     BlockRead(Fitm, Station, Count * SizeOf(Double), Res);
 //    BlockRead(Fitm, Flows, Count * SizeOf(Double), Res);
     BlockRead(Fitm, Depths, Count * SizeOf(Double), Res);
 //    BlockRead(Fitm, Energy, Count * SizeOf(Double), Res);
 
     if (ID <> LinkIndex + 1) then
-      Result := -1 // error
+    begin
+      Result := -1; // error
+    end
     else
       Result := Count;
   end

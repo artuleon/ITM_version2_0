@@ -3,7 +3,7 @@ unit Fproplot;
 {-------------------------------------------------------------------}
 {                    Unit:    Fproplot.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 5.2                                   }
+{                    Version: 2.0                                   }
 {                    Date:    11/03/22                              }
 {                                                                   }
 {   MDI child form that displays a profile plot.                    }
@@ -27,9 +27,9 @@ type
     MaxDepth: Single;
     Length: Single;
     ITMLinkStation: array[0..99] of Double;
-    ITMLinkFlows: array[0..99] of Double;
     ITMLinkDepths: array[0..99] of Double;
-    ITMLinkEnergy: array[0..99] of Double;
+    //ITMLinkFlows: array[0..99] of Double;
+    //ITMLinkEnergy: array[0..99] of Double;
     ITMDataHigh: Integer;
     ITMDataLow: Integer;
   end;
@@ -98,6 +98,7 @@ type
               var GraphOptions2: TGraphOptions;
               var ProfileOptions2: TProfileOptions);
     procedure DrawHGL(const E1, E2: TElevPoints);
+    procedure DrawNonpipeHGL(const E1, E2: TElevPoints);
     procedure GetLinkData(aLink: TLink);
     procedure GetNodeData(aNode: TNode);
     procedure GetStartNode;
@@ -138,7 +139,7 @@ implementation
 uses Dcopy, Dproplot, Fmain, Fmap, Uoutput, Ugraph;
 
 const
-  MINLENGTH = 5; //10;
+  MINLENGTH = 10;
   TXT_DISTANCE = 'Distance';
   TXT_ELEVATION = 'Elevation';
   TXT_HT_ABOVE = 'Height Above';
@@ -693,7 +694,8 @@ begin
     end;
     LastNode := Node2;
 
-    if (PlotPeriod >= 0) then
+    LinkData.ITMDataHigh := -1;
+    if (PlotPeriod >= 0) and (aLink.ITMindex >= 0) then
     begin
       // Retrieve water depth for link if not using dynamic wave routing
       LinkData.ITMDataHigh := Uoutput.GetITMLinkOutVal(aLink.ITMindex, PlotPeriod,
@@ -703,10 +705,10 @@ begin
           //LinkData.ITMLinkEnergy);
       if (LinkData.ITMDataHigh = -1) then
       begin
-        MessageBox(Self.WindowHandle,
-          'GetITMLinkOutVal gave a different pipe ID than requested.',
-          'ERROR', +mb_OK);
-          break;
+        //ShowMessage(
+        //  'GetITMLinkOutVal gave a different pipe ID than requested (' +
+        //  IntToStr(aLink.ITMindex) + ')');
+          continue;
       end;
     end;
 
@@ -717,6 +719,13 @@ begin
 
     // Check if link has no length
     if LinkData.Length = 0 then continue;
+
+    // Draw non-pipe HGL
+    if (aLink.ITMindex < 0) then
+    begin
+      DrawNonpipeHGL(E1, E2);
+      continue;
+    end;
 
     // Do not allow water line to drop below conduit invert
     if E1.Y > E1.Yinv then E1.Y := E1.Yinv;
@@ -747,7 +756,8 @@ begin
     end;
 
     // Draw the Hydraulic Grade Line
-    if IncludeHGL then DrawHGL(E1, E2);
+    if (IncludeHGL) and (aLink.Ltype = CONDUIT) then
+      DrawHGL(E1, E2);
   end;
   Chart1.Canvas.Pen.Style := psSolid;
 end;
@@ -863,6 +873,7 @@ begin
     Rectangle(X1, Y3, X2, Y1);
   end;
 end;
+
 
 procedure TProfilePlotForm.GetNodeElevations(const aNode: TNode;
   const X: Double; const Z: Single; const Ylink: Single; const V: Integer;
@@ -981,7 +992,7 @@ end;
 
 procedure TProfilePlotForm.DrawHGL(const E1, E2: TElevPoints);
 //-----------------------------------------------------------------------------
-// Draws the Hydraulic Grade Line on the profile plot.
+// Draws a pipe's Hydraulic Grade Line on the profile plot.
 // See note about pixel elevations in GetWaterFilledPoly function above.
 //-----------------------------------------------------------------------------
 var
@@ -1057,6 +1068,24 @@ begin
     Pen.Style := psClear;
   end;
 end;
+
+
+procedure TProfilePlotForm.DrawNonpipeHGL(const E1, E2: TElevPoints);
+//-----------------------------------------------------------------------------
+// Draws a non-pipe's Hydraulic Grade lline on the profile plot.
+//-----------------------------------------------------------------------------
+begin
+  with Chart1.Canvas do
+  begin
+    Pen.Style := psSolid;
+    Pen.Color := clBlue;
+    Pen.Width := TheProfileOptions.LineWidth;
+    MoveTo(E1.X, E1.Y);
+    LineTo(E2.X, E2.Y);
+    Pen.Style := psClear;
+  end;
+end;
+
 
 function TProfilePlotForm.Intersection(const X1: LongInt; const X2: LongInt;
   const Y1: LongInt; const Y2: LongInt; const Y3: LongInt;
@@ -1155,12 +1184,12 @@ begin
     MaxDepth := 0;
   end;
 
-  if LinkData.Length = 0 then
+{  if LinkData.Length = 0 then
   begin
     if Uglobals.UnitSystem = usUS
     then LinkData.Length := MINLENGTH
     else LinkData.Length := 0.3048*MINLENGTH;
-  end;
+  end; }
 
 end;
 

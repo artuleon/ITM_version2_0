@@ -3,8 +3,8 @@ unit Uedit;
 {-------------------------------------------------------------------}
 {                    Unit:    Uedit.pas                             }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/20/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/03/23                              }
 {                                                                   }
 {   Delphi Pascal unit that adds and edits objects in an ITM        }
 {   project's database.                                             }
@@ -61,8 +61,6 @@ begin
   L := TLink.Create;
   Uutils.CopyStringArray(Project.DefProp[Ltype].Data, L.Data);
   L.Ltype := Ltype;
-  if Ltype = CONDUIT then
-    L.HasPump := False;
 
   // Assign end nodes to the link
   if (Node1 <> nil) and (Node2 <> nil) then
@@ -174,7 +172,7 @@ begin
   case ObjType of
     // For non-visual objects, call its editor with no reference
     // to any existing item
-    GATECURVE..
+    STORAGECURVE..
     CONTROLCURVE:  EditCurve(ObjType, -1);
     TIMESERIES:    EditTimeseries(-1);
   end;
@@ -264,7 +262,6 @@ var
   I         : Integer;
   LastIndex : Integer;
   N         : TNode;
-  S         : String;
 begin
   // Set the caption of the Property Editor window
   PropEditForm.Caption := ObjectLabels[Ntype] + ' ' +
@@ -286,8 +283,6 @@ begin
     case Ntype of
       JUNCTION:   LastIndex := High(JunctionProps);
       BOUNDARY:   LastIndex := High(BoundaryProps);
-      GATE:       LastIndex := High(GateProps);
-      WEIR:       LastIndex := High(WeirProps);
       STORAGE:    LastIndex := High(StorageProps);
       else        LastIndex := -1;
     end;
@@ -303,43 +298,6 @@ begin
     BOUNDARY:
       begin
         PropEditForm.Editor.SetProps(BoundaryProps,  Project.PropList);
-      end;
-    GATE:
-      begin
-        GateProps[GATE_HLOSS_CURVE_INDEX].List := Project.Lists[GATECURVE].Text;
-
-        // Initially set all gate control property styles to read-only
-        for I := GATE_TIME_SERIES_INDEX to GATE_CONTROL_CURVE_INDEX do
-          GateProps[I].Style := esReadOnly;
-
-        // Change control property styles depending on Control Method
-        S := Project.PropList[GATE_CONTROL_METHOD_INDEX];
-        // Time Series control method
-        if SameText(S, ControlMethods[1]) then
-        begin
-          GateProps[GATE_TIME_SERIES_INDEX].Style := esComboEdit;
-          GateProps[GATE_TIME_SERIES_INDEX].List := Project.Lists[TIMESERIES].Text;
-          Project.PropList[GATE_CONTROL_NODE_INDEX] := '';
-          Project.PropList[GATE_CONTROL_CURVE_INDEX] := '';
-        end
-        // Node Depth control method
-        else if SameText(S, ControlMethods[2]) then
-        begin
-          GateProps[GATE_CONTROL_NODE_INDEX].Style := esEdit;
-          GateProps[GATE_CONTROL_CURVE_INDEX].Style := esComboEdit;
-          GateProps[GATE_CONTROL_CURVE_INDEX].List := Project.Lists[CONTROLCURVE].Text;
-          Project.PropList[GATE_TIME_SERIES_INDEX] := '';
-        end
-        // No control method
-        else for I := GATE_TIME_SERIES_INDEX to GATE_CONTROL_CURVE_INDEX do
-          Project.PropList[I] := '';
-
-        PropEditForm.Editor.SetProps(GateProps,  Project.PropList);
-      end;
-    WEIR:
-      begin
-        WeirProps[WEIR_RATING_CURVE_INDEX].List := Project.Lists[RATINGCURVE].Text;
-        PropEditForm.Editor.SetProps(WeirProps,  Project.PropList);
       end;
     STORAGE:
       begin
@@ -380,6 +338,40 @@ begin
 end;
 
 
+procedure SetControlProps(CtrlIndex: Integer; var Props: array of TPropRecord);
+//-----------------------------------------------------------------------------
+//  Sets the control properties for a link in the Property Editor.
+//  Assumes that a link's control properties consist of control type,
+//  a time series for time control, and a node and control curve for
+//  depth control. CtrlIndex is the index of the control type in the
+//  link's property list.
+//-----------------------------------------------------------------------------
+var
+  I: Integer;
+  S: String;
+begin
+  for I := CtrlIndex+1 to CtrlIndex+3 do
+    Props[I].Style := esReadOnly;
+  S := Project.PropList[CtrlIndex];
+  if SameText(S, ControlMethods[1]) then
+  begin
+    Props[CtrlIndex+1].Style := esComboEdit;
+    Props[CtrlIndex+1].List := Project.Lists[TIMESERIES].Text;
+    Project.PropList[CtrlIndex+2] := '';
+    Project.PropList[CtrlIndex+3] := '';
+  end
+  else if SameText(S, ControlMethods[2]) then
+  begin
+    Props[CtrlIndex+2].Style := esEdit;
+    Props[CtrlIndex+3].Style := esComboEdit;
+    Props[CtrlIndex+3].List := Project.Lists[CONTROLCURVE].Text;
+    Project.PropList[CtrlIndex+1] := '';
+  end
+  else for I := CtrlIndex+1 to CtrlIndex+3 do
+    Project.PropList[I] := '';
+end;
+
+
 procedure EditLink(const Ltype: Integer; const Index: Integer);
 //-----------------------------------------------------------------------------
 //  Edits a link of type Ltype at position Index in the list of links.
@@ -406,62 +398,50 @@ begin
     else PropList.Add(L.Node1.ID);
     if L.Node2 = nil then PropList.Add('')
     else PropList.Add(L.Node2.ID);
-    LastIndex := High(ConduitProps);
-    for I := 3 to LastIndex do PropList.Add(L.Data[I]);
+
+    case Ltype of
+      CONDUIT:   LastIndex := High(ConduitProps);
+      PUMP:      LastIndex := High(PumpProps);
+      ORIFICE:   LastIndex := High(OrificeProps);
+      WEIR:      LastIndex := High(WeirProps);
+      OUTLET:    LastIndex := High(OutletProps);
+      else       LastIndex := -1;
+    end;
+    for I := COMMENT_INDEX to LastIndex do PropList.Add(L.Data[I]);
   end;
 
   // Update the Property Editor form
-  PropEditForm.Editor.SetProps(ConduitProps, Project.PropList);
+  case Ltype of
+    CONDUIT:
+      PropEditForm.Editor.SetProps(ConduitProps, Project.PropList);
 
-  // Initially set all pump control property styles to read-only
-  for I := PUMP_CURVE_INDEX to PUMP_CONTROL_CURVE_INDEX do
-  begin
-    ConduitProps[I].Style := esReadOnly;
-    Project.PropList[I] := '';
-  end;
-
-  // Activate pump property settings if conduit contains a pump
-    S := Project.PropList[CONDUIT_HAS_PUMP_INDEX];
-    if SameText(S, 'YES') then
+    PUMP:
     begin
-      ConduitProps[PUMP_CURVE_INDEX].Style := esComboEdit;
-      ConduitProps[PUMP_CURVE_INDEX].List := Project.Lists[PUMPCURVE].Text;
-      ConduitProps[PUMP_LOSS_COEFF_INDEX].Style := esEdit;
-      ConduitProps[PUMP_FRICTION_INDEX].Style := esEdit;
-      ConduitProps[PUMP_INIT_SETTING_INDEX].Style := esEdit;
-      ConduitProps[PUMP_CONTROL_METHOD_INDEX].Style := esComboList;
-      Project.PropList[PUMP_CURVE_INDEX] := L.Data[PUMP_CURVE_INDEX];
-      Project.PropList[PUMP_LOSS_COEFF_INDEX] := L.Data[PUMP_LOSS_COEFF_INDEX];
-      Project.PropList[PUMP_FRICTION_INDEX] := L.Data[PUMP_FRICTION_INDEX];
-      Project.PropList[PUMP_INIT_SETTING_INDEX] := L.Data[PUMP_INIT_SETTING_INDEX];
-      Project.PropList[PUMP_CONTROL_METHOD_INDEX] := L.Data[PUMP_CONTROL_METHOD_INDEX];
-
-      // Change control property styles depending on Control Method
-      S := Project.PropList[PUMP_CONTROL_METHOD_INDEX];
-      // Time Series control method
-      if SameText(S, ControlMethods[1]) then
-      begin
-        ConduitProps[PUMP_TIME_SERIES_INDEX].Style := esComboEdit;
-        ConduitProps[PUMP_TIME_SERIES_INDEX].List := Project.Lists[TIMESERIES].Text;
-        Project.PropList[PUMP_TIME_SERIES_INDEX] := L.Data[PUMP_TIME_SERIES_INDEX];
-      end
-      // Node Depth control method
-      else if SameText(S, ControlMethods[2]) then
-      begin
-        ConduitProps[PUMP_CONTROL_NODE_INDEX].Style := esEdit;
-        ConduitProps[PUMP_CONTROL_CURVE_INDEX].Style := esComboEdit;
-        ConduitProps[PUMP_CONTROL_CURVE_INDEX].List := Project.Lists[CONTROLCURVE].Text;
-        Project.PropList[PUMP_CONTROL_NODE_INDEX] := L.Data[PUMP_CONTROL_NODE_INDEX];
-        Project.PropList[PUMP_CONTROL_CURVE_INDEX] := L.Data[PUMP_CONTROL_CURVE_INDEX];
+      PumpProps[PUMP_CURVE_INDEX].List := Project.Lists[PUMPCURVE].Text;
+      SetControlProps(PUMP_CONTROL_TYPE_INDEX, PumpProps);
+      PropEditForm.Editor.SetProps(PumpProps, Project.PropList);
       end;
-      // No control method
-     // else for I := PUMP_TIME_SERIES_INDEX to PUMP_CONTROL_CURVE_INDEX do
-     //   Project.PropList[I] := '';
+
+    ORIFICE:
+    begin
+      SetControlProps(ORIFICE_CONTROL_TYPE_INDEX, OrificeProps);
+      PropEditForm.Editor.SetProps(OrificeProps, Project.PropList);
     end;
 
-  PropEditForm.Editor.SetProps(ConduitProps, Project.PropList);
+    WEIR:
+    begin
+      SetControlProps(WEIR_CONTROL_TYPE_INDEX, WeirProps);
+      PropEditForm.Editor.SetProps(WeirProps,  Project.PropList);
+    end;
 
+    OUTLET:
+    begin
+      OutletProps[OUTLET_CURVE_INDEX].List := Project.Lists[RATINGCURVE].Text;
+      PropEditForm.Editor.SetProps(OutletProps,  Project.PropList);
+    end;
+  end;
 end;
+
 
 function EditTimeseries(const Index: Integer): String;
 //-----------------------------------------------------------------------------
@@ -708,7 +688,7 @@ begin
 
     // Use specific dialog form editor for other objects
     NOTES:       EditNotes;
-    GATECURVE..
+    STORAGECURVE..
     CONTROLCURVE: EditCurve(ObjType, EditorIndex);
     TIMESERIES:  EditTimeseries(EditorIndex);
     OPTION:      EditOptions;
@@ -729,7 +709,7 @@ begin
       Editor.ColHeading2 := TXT_VALUE;
       case ObjType of
         JUNCTION..STORAGE: EditNode(ObjType,Index);
-        CONDUIT:           EditLink(ObjType,Index);
+        CONDUIT..OUTLET:   EditLink(ObjType,Index);
         MAPLABEL:          EditLabel(Index);
       end;
     end;

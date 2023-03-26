@@ -49,7 +49,7 @@
 	!Volume stored in tunnels
 	sum_temp1 = 0d0
       do j = 1,NR
-          if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)    
+!          if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)    
               do i = 3,Nx(j)-2
                   if (ISNAN(A0(j,i)))then 	
                       call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
@@ -61,7 +61,7 @@
                   sum_temp1 = sum_temp1 + A0(j,i)*dx(j)
                   vol_pipes_time_step =vol_pipes_time_step+A0(j,i)*dx(j)
               enddo
-          endif
+!          endif
       enddo	
       
       !Volume stored in dropshafts, junctions and reservoirs
@@ -87,7 +87,7 @@
           
 		!Volume at reservoirs
 		If(BCnode(R) == 20)then
-			call itm_get_storage(R,yres_jun_old(R),Stora_new)
+			call itm_get_storage_volume(R,yres_jun_old(R),Stora_new)
 			sum_temp4 = sum_temp4 + Stora_new
 		endif	
       enddo	

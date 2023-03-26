@@ -3,8 +3,8 @@ unit Uproject;
 {-------------------------------------------------------------------}
 {                    Unit:    Uproject.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/18/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/02/23                              }
 {                                                                   }
 {   Delphi Pascal unit that defines the Project class used to       }
 {   represent a project's data objects and their properties.        }
@@ -19,12 +19,12 @@ uses
 
 const
   MISSING          = -1.0e10;  //Missing value
-  MAXNODEPROPS     = 14;       //Max. index for node data array
-  MAXLINKPROPS     = 24;       //Max. index for link data array
+  MAXNODEPROPS     = 10;       //Max. index for node data array
+  MAXLINKPROPS     = 21;       //Max. index for link data array
   MAXOPTIONS       = 19;       //Max. index for options array
-  MAXPROPS         = 24;       //Max. index of all data arrays; must be as
+  MAXPROPS         = 21;       //Max. index of all data arrays; must be as
                                //large as largest of all preceeding constants
-  MAXCLASS         = 14;       //Max. index for object classes
+  MAXCLASS         = 15;       //Max. index for object classes
 
 //----------------------
 // Object category codes
@@ -33,17 +33,18 @@ const
   OPTION       = 1;
   JUNCTION     = 2;
   BOUNDARY     = 3;
-  GATE         = 4;
-  WEIR         = 5;
-  STORAGE      = 6;
-  CONDUIT      = 7;
-  MAPLABEL     = 8;
-  GATECURVE    = 9;
-  RATINGCURVE  = 10;
+  STORAGE      = 4;
+  CONDUIT      = 5;
+  PUMP         = 6;
+  ORIFICE      = 7;
+  WEIR         = 8;
+  OUTLET       = 9;
+  MAPLABEL     = 10;
   STORAGECURVE = 11;
   PUMPCURVE    = 12;
-  CONTROLCURVE = 13;
-  TIMESERIES   = 14;
+  RATINGCURVE  = 13;
+  CONTROLCURVE = 14;
+  TIMESERIES   = 15;
 
 //----------------------
 // Shared property codes
@@ -74,23 +75,6 @@ const
   BOUNDARY_VALUE_INDEX      = 7;
   BOUNDARY_VENTILATED_INDEX = 8;
 
-//--------------------
-// Gate property codes
-//--------------------
-  GATE_HLOSS_CURVE_INDEX    = 6;
-  GATE_INIT_OPENING_INDEX   = 7;
-  GATE_OPEN_RATE_INDEX      = 8;
-  GATE_CONTROL_METHOD_INDEX = 9;
-  GATE_TIME_SERIES_INDEX    = 10;
-  GATE_CONTROL_NODE_INDEX   = 11;
-  GATE_CONTROL_CURVE_INDEX  = 12;
-
-//--------------------
-// Weir property codes
-//--------------------
-  WEIR_CREST_ELEV_INDEX     = 6;
-  WEIR_RATING_CURVE_INDEX   = 7;
-
 //----------------------------
 // Storage unit property codes
 //----------------------------
@@ -112,27 +96,76 @@ const
   CONDUIT_DEPTH_TYPE_INDEX  = 12;
   CONDUIT_DEPTH_VALUE_INDEX = 13;
   CONDUIT_INIT_FLOW_INDEX   = 14;
-  CONDUIT_HAS_PUMP_INDEX    = 15;
-  PUMP_HEADING_INDEX        = 16;
-  PUMP_CURVE_INDEX          = 17;
-  PUMP_LOSS_COEFF_INDEX     = 18;
-  PUMP_FRICTION_INDEX       = 19;
-  PUMP_INIT_SETTING_INDEX   = 20;
-  PUMP_CONTROL_METHOD_INDEX = 21;
-  PUMP_TIME_SERIES_INDEX    = 22;
-  PUMP_CONTROL_NODE_INDEX   = 23;
-  PUMP_CONTROL_CURVE_INDEX  = 24;
 
   CONDUIT_SLOPE_INDEX       = 120;
+
+//--------------------
+// Pump property codes
+//--------------------
+  PUMP_CURVE_INDEX          = 5;
+  PUMP_DIAM_INDEX           = 6;
+  PUMP_LENGTH_INDEX         = 7;
+  PUMP_FRICTION_INDEX       = 8;
+  PUMP_LOSS_COEFF_INDEX     = 9;
+  PUMP_INIT_SETTING_INDEX   = 10;
+  PUMP_CONTROL_TYPE_INDEX   = 11;
+  PUMP_CONTROL_TIMES_INDEX  = 12;
+  PUMP_CONTROL_NODE_INDEX   = 13;
+  PUMP_CONTROL_CURVE_INDEX  = 14;
+
+//--------------------
+// Orifice property codes
+//--------------------
+  ORIFICE_TYPE_INDEX          = 5;
+  ORIFICE_SHAPE_INDEX         = 6;
+  ORIFICE_HEIGHT_INDEX        = 7;
+  ORIFICE_WIDTH_INDEX         = 8;
+  ORIFICE_BOTTOM_HT_INDEX     = 9;
+  ORIFICE_COEFF_INDEX         = 10;
+  ORIFICE_FLAPGATE_INDEX      = 11;
+  ORIFICE_INIT_SETTING_INDEX  = 12;
+  ORIFICE_CLOSE_RATE_INDEX    = 13;
+  ORIFICE_CONTROL_TYPE_INDEX  = 14;
+  ORIFICE_CONTROL_TIMES_INDEX = 15;
+  ORIFICE_CONTROL_NODE_INDEX  = 16;
+  ORIFICE_CONTROL_CURVE_INDEX = 17;
+
+//--------------------
+// Weir property codes
+//--------------------
+  WEIR_TYPE_INDEX          = 5;
+  WEIR_HEIGHT_INDEX        = 6;
+  WEIR_WIDTH_INDEX         = 7;
+//WEIR_SLOPE_INDEX         = 8;
+  WEIR_CREST_INDEX         = 8;
+  WEIR_COEFF_INDEX         = 9;
+//WEIR_FLAPGATE_INDEX      = 11;
+  WEIR_CONTRACT_INDEX      = 10;
+//WEIR_END_COEFF_INDEX     = 13;
+  WEIR_SURCHARGE_INDEX     = 11;
+  WEIR_INIT_SETTING_INDEX  = 12;
+  WEIR_CLOSE_RATE_INDEX    = 13;
+  WEIR_CONTROL_TYPE_INDEX  = 14;
+  WEIR_CONTROL_TIMES_INDEX = 15;
+  WEIR_CONTROL_NODE_INDEX  = 16;
+  WEIR_CONTROL_CURVE_INDEX = 17;
+
+  WEIR_SHAPE_INDEX         = 21;
+
+//----------------------
+// Outlet property codes
+//----------------------
+  OUTLET_OFFSET_INDEX       = 5;
+  OUTLET_FLAPGATE_INDEX     = 6;
+  OUTLET_CURVE_INDEX        = 7;
 
 //-----------------
 // Curve type codes
 //-----------------
-  GATE_CURVE     = 0;
-  RATING_CURVE   = 1;
-  STORAGE_CURVE  = 2;
-  PUMP_CURVE     = 3;
-  CONTROL_CURVE  = 4;
+  STORAGE_CURVE  = 0;
+  PUMP_CURVE     = 1;
+  RATING_CURVE   = 2;
+  CONTROL_CURVE  = 3;
 
 //-------------------------
 // Map Label property codes
@@ -246,7 +279,6 @@ type
     Zindex: Integer;            // Index in array of computed results
     ITMindex: Integer;          // Index in ITM results
     ColorIndex: Integer;        // Index in array of map display colors
-    HasPump: Boolean;
     Marked: Boolean;
     Data : array [0..MAXLINKPROPS] of String; // Link-specific data
     constructor Create;
@@ -370,7 +402,6 @@ type
     function    GetNextID(const ObjType : Integer): String;
     function    GetNode(const Ntype: Integer; const Index: Integer):TNode;
     function    GetNodeCount: Integer;
-    function    GetPumpCount: Integer;
 
     function    HasResults(const ObjType: Integer; const Index: Integer): Boolean;
 
@@ -647,21 +678,6 @@ begin
 end;
 
 
-function TProject.GetPumpCount: Integer;
-//-----------------------------------------------------------------------------
-//  Counts the number of conduits containing pumps.
-//-----------------------------------------------------------------------------
-var
-  I: Integer;
-begin
-  Result := 0;
-  for I := 0 to Lists[CONDUIT].Count - 1 do
-  begin
-    if GetLink(CONDUIT, I).HasPump = True then Inc(Result);
-  end;
-end;
-
-
 procedure TProject.InitCurrentItems;
 //-----------------------------------------------------------------------------
 //  Initializes the CurrentItem pointer for each list of object type.
@@ -703,13 +719,13 @@ end;
 
 function TProject.IsLink(const ObjType: Integer): Boolean;
 begin
-  if ObjType = CONDUIT then Result := True
+  if ObjType in [CONDUIT..OUTLET] then Result := True
   else Result := False;
 end;
 
 function TProject.IsCurve(const ObjType: Integer): Boolean;
 begin
-  if ObjType in [GATECURVE..CONTROLCURVE]
+  if ObjType in [STORAGECURVE..CONTROLCURVE]
   then Result := True
   else Result := False;
 end;

@@ -37,8 +37,7 @@
 	Cr_mixed = 0.50 !Courant number for mixed flow				
 	Crini = 0.05 !Courant number for initial time steps
 	
-10    do j = 1,NR		
-          if (pump_index(j) < 1)then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)    
+10    do j = 1,Npipes		
 			do i = 3,Nx(j)-2
 				Area = A0(j,i)
 				vel = dabs(Q0(j,i)/A0(j,i))
@@ -77,7 +76,6 @@
 					call endprog; GLOBAL_STATUS_FLAG = 1; return
 				endif					
               enddo
-          endif
 	enddo
 20	Dt_Courant = Dt
       end subroutine

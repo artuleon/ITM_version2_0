@@ -3,8 +3,8 @@ unit Doptions;
 {-------------------------------------------------------------------}
 {                    Unit:    Doptions.pas                          }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/22/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/06/23                              }
 {                                                                   }
 {   Dialog form unit that edits a project's simulation options.     }
 {                                                                   }
@@ -152,8 +152,6 @@ procedure TAnalysisOptionsForm.SetOptions(Page: Integer);
 //  Loads current simulation options into form and displays the
 //  specified page of the PageControl component.
 //-----------------------------------------------------------------------------
-var
-  I: Integer;
 begin
   with Project.Options do
   begin
@@ -200,8 +198,6 @@ procedure TAnalysisOptionsForm.GetOptions;
 //-----------------------------------------------------------------------------
 //  Unloads current contents of form into project's simulation options.
 //-----------------------------------------------------------------------------
-var
-  I: Integer;
 begin
   with Project.Options do
   begin

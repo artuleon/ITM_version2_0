@@ -1,24 +1,13 @@
-! This file is part of the ITM model.
-!
-! Copyright 2009 University of Illinois at Urbana-Champaign
-! Copyright 2011 Oregon State University, Corvallis
-!
-! Authors: Arturo S. Leon (Hydraulics), Nils Oberg (User interface)
-!
-! ITM is a free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published
-! by the Free Software Foundation; either version 2.0 of the
-! License, or (at your option) any later version.
-! 
-! This program is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-! 
-! You should have received a copy of the GNU General Public License
-! along with this program; if not, write to the Free Software
-! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-! 02110-1301, USA.
+!******************************************************************************
+!Project:      ITM (Illinois Transient Model)
+!Version:      2.0
+!Module:       common_module
+!Description:  declares global variables used in most other modules.
+!Authors:      see AUTHORS
+!Copyright:    see LICENSE
+!License:      see LICENSE
+!Last Updated: 03/09/2023
+!******************************************************************************
 
 MODULE COMMON_MODULE
 use itm_table
@@ -33,6 +22,8 @@ implicit none
   integer, parameter :: STORAGE  = 5
   integer, parameter :: PIPE     = 1
   integer, parameter :: PUMP     = 2
+  integer, parameter :: ORIFICE  = 3
+  integer, parameter :: OUTLET   = 5
   
   ! Boundary condition types
   integer, parameter :: DROPSHAFT    = 4  !Dropshaft with inflow hydrog.
@@ -41,39 +32,68 @@ implicit none
   integer, parameter :: DEPTH_BOUND  = 11 !Constant depth boundary
   integer, parameter :: RESERVOIR    = 20 !Reservoir boundary
   integer, parameter :: JUNC_NOFLOW  = 24 !Junction with no inflow
-  integer, parameter :: RATE_CURVE   = 30 !Rating curve boundary
-  integer, parameter :: GATE2        = 40 !Gate boundary - 2 pipes
-  integer, parameter :: GATE1        = 41 !Gate boundary - 1 pipe
   
-  ! Derived types
-  type gate_t
-    double precision :: init_opening
-    double precision :: target_opening
-    double precision :: opening_rate
-    integer          :: control_tseries
-    integer          :: control_node
-    integer          :: control_curve
-  end type gate_t
-
+  ! Orifice types & shapes
+  integer, parameter :: SIDE = 0
+  integer, parameter :: BOTTOM = 1
+  integer, parameter :: CIRCULAR = 0
+  integer, parameter :: RECTANGULAR = 1
+  
   type inflow_t
     integer          :: tseries
     double precision :: baseline
     double precision :: scale_factor
   end type inflow_t
   
+  type control_t
+    real(8) :: setting
+    real(8) :: target_setting
+    real(8) :: adjust_rate
+    integer :: tseries
+    integer :: node
+    integer :: curve
+  end type control_t
+  
   type pump_t
-    double precision :: loss_coeff
-    double precision :: friction_factor
-    double precision :: init_setting
-    double precision :: setting
-    double precision :: max_head
-    double precision :: max_flow
-    integer          :: pump_curve
-    integer          :: control_tseries
-    integer          :: control_node
-    integer          :: control_curve
+    real(8) :: pipe_diam
+    real(8) :: pipe_length
+    real(8) :: friction_factor
+    real(8) :: loss_coeff
+    real(8) :: max_head
+    real(8) :: max_flow
+    integer :: pump_curve
+    type(control_t)  :: control
   end type pump_t
-      
+  
+  type orif_t
+    integer :: orif_type
+    integer :: shape
+    integer :: flapgate
+    real(8) :: offset
+    real(8) :: height
+    real(8) :: width
+    real(8) :: coeff
+    type(control_t) :: control
+  end type orif_t
+  
+  type weir_t
+    integer :: weir_type
+    integer :: contractions
+    integer :: can_surcharge
+    real(8) :: offset
+    real(8) :: height
+    real(8) :: length
+    real(8) :: slope
+    real(8) :: coeff    
+    real(8) :: end_coeff
+    type(control_t) :: control
+  end type weir_t
+  
+  type outlet_t
+    real(8) :: offset
+    integer :: flapgate
+    integer :: rating_curve
+  end type outlet_t
 
 !--------------------------------------------------------------------
 ! Number of objects
@@ -81,6 +101,9 @@ implicit none
   integer :: Nlinks          ! number of links
   integer :: Npipes          ! number of pipes
   integer :: Npumps          ! number of pumps
+  integer :: Norifs          ! number of orifices
+  integer :: Nweirs          ! number of weirs
+  integer :: Noutlets        ! number of outlets
   integer :: Ncurves         ! number of data curves
   integer :: Ntseries        ! number of time series
 
@@ -96,13 +119,11 @@ implicit none
   double precision, ALLOCATABLE :: flowdepth_res(:)	    ! storage node initial depth
   double precision, ALLOCATABLE :: reser_maxdepth(:)    ! storage node max. depth
   double precision, ALLOCATABLE :: Reser_outflow(:)     ! storage node outflow rate
-  double precision, ALLOCATABLE :: PumpFlowToNode(:)    ! Sum of pump flows at nodes
+  double precision, ALLOCATABLE :: NonPipeFlowToNode(:) ! Sum of non-pipe flows at nodes
   double precision, ALLOCATABLE :: weir_invert(:)       ! Weir invert elevation
   
   integer,          ALLOCATABLE :: node_curve(:)        ! curve used by node
   type(inflow_t),   ALLOCATABLE :: inflow(:)            ! lateral inflow
-  type(gate_t),     ALLOCATABLE :: gate_data(:)         ! gate controls
-  
   
 ! Link input variables  
   character(IDLEN), ALLOCATABLE :: link_id(:)           ! link ID name
@@ -117,9 +138,15 @@ implicit none
   integer,          ALLOCATABLE :: Init_depth_type(:)   ! type of initial condition
   double precision, ALLOCATABLE :: Init_depth(:)        ! initial flow depth
   double precision, ALLOCATABLE :: Init_disch(:)        ! initial flow rate
-  integer,          ALLOCATABLE :: pump_index(:)        ! index into Pump array
-  type(pump_t),     ALLOCATABLE :: pump_data(:)         ! pump data
-  double precision, ALLOCATABLE :: Qpump_link(:)        ! Flow discharges at pump links 
+
+! Non-pipe links
+  type(pump_t),     ALLOCATABLE :: pumps(:)             ! pump data
+  type(orif_t),     ALLOCATABLE :: orifs(:)             ! orifice data
+  type(weir_t),     ALLOCATABLE :: weirs(:)             ! weir data
+  type(outlet_t),   ALLOCATABLE :: outlets(:)           ! outlet data
+  
+  integer,          ALLOCATABLE :: link_type_index(:)   ! index into a link type array
+  real(8),          ALLOCATABLE :: nonpipe_flow(:)      ! flow in non-pipe links
   
 ! Tabular input variables
   type(table_t),    ALLOCATABLE :: curve(:)             ! x-y curve data
@@ -158,36 +185,18 @@ implicit none
   integer,          ALLOCATABLE :: IdFlow(:,:)
   double precision, ALLOCATABLE :: Dx(:)
 
-! Init
-  integer, ALLOCATABLE :: inf(:,:)
-  integer, ALLOCATABLE :: oufl(:,:) 
-  integer, ALLOCATABLE :: Ninf(:)
-  integer, ALLOCATABLE :: Noufl(:)
-  integer, ALLOCATABLE :: Number_of_zero_drops(:)
-  integer, ALLOCATABLE :: ID_Number_of_zero_drops(:,:)
-      
+
+! Free surface variables
   double precision, ALLOCATABLE :: Qcrit_maxIA(:)
   double precision, ALLOCATABLE :: Qnor_maxIA(:)
   double precision, ALLOCATABLE :: ycrit_min(:)
   double precision, ALLOCATABLE :: ycrit_max(:)
   double precision, ALLOCATABLE :: Ecrit_max(:)
-  
   double precision, ALLOCATABLE :: d1_min(:)
   double precision, ALLOCATABLE :: d2_min(:)
-      
-! Boundaries		
-  integer,          ALLOCATABLE :: Nnod(:)
-  integer,          ALLOCATABLE :: line_elem(:,:)
-  
-  
+        
 ! For hydrographs and reserv. 		
   double precision, ALLOCATABLE :: Qbound(:,:) !to store flow 
-
-! Variables from the boundaries	
-  integer,          ALLOCATABLE :: sum_dry_bed_node(:)
-	
-! Roughness
-  double precision, ALLOCATABLE :: fd(:)         ! Darcy friction coefficient
 
 ! Parameters Star region 
   integer CODE_STAR_REGION  !Parameter to compute or not variables at star region
@@ -229,9 +238,8 @@ implicit none
   double precision Kloss                         !@ITM@IGNORE
   parameter (Kloss = 0.1)                        !@ITM@IGNORE !head loss coefficient k*u*abs(u)/(2g)
   
-	
-! values at adjacent cells and at boundaries at old time step	
-! NodeNS(r) = Number of pipes connected to the node (1, 2, 3 ....)
+! Link/node connectivity
+! NodeNS(r) = number of pipe links connected to node r
 ! NodeID(r,j) = pipe ID(1, 2, 3, ...) 
 ! Nodetype = inflowing or outflowing
 ! maximum 10 pipes can be connected to each node
@@ -239,11 +247,6 @@ implicit none
   integer, ALLOCATABLE :: NodeID(:,:)	
   integer, ALLOCATABLE :: Nodetype(:,:)
   
-  
-  !For pumps
-    integer, ALLOCATABLE :: NodePumpID(:,:)	
-    integer, ALLOCATABLE :: NodetypePump(:,:)
-	
 ! Parameters air pocket
 ! air pressure head expressed in equivalent water head
   double precision, ALLOCATABLE :: ha(:,:) 
@@ -286,32 +289,23 @@ implicit none
   double precision, ALLOCATABLE :: Q0L(:)
   double precision, ALLOCATABLE :: Q0R(:) 
   integer                       :: pressurized
-  integer,          ALLOCATABLE :: NoConvergence_Junction_GLOBAL(:)
 
 !## Upstream IDs
 
 !## Junction
   integer,          ALLOCATABLE :: Junct(:,:)
   integer,          ALLOCATABLE :: max_crown_pipe(:)	
-  integer,          ALLOCATABLE :: NPipes_At_Node_with_Pumps(:)	
-  
-  
   double precision, ALLOCATABLE :: Drop(:,:)
   double precision, ALLOCATABLE :: Ares_junct(:)
   double precision, ALLOCATABLE :: yres_jun_old(:)	
   double precision, ALLOCATABLE :: height_jun(:)
   double precision, ALLOCATABLE :: max_elev_crown(:)   
-  
 		
 !## Reservoir 	
-  double precision, ALLOCATABLE :: yres_up(:)
   double precision, ALLOCATABLE :: Outflow_limited(:) !allowed outflow
 
 !## Dropshaft
   double precision, ALLOCATABLE :: V_over(:)
-
-!(len=1024)
-
   double precision, ALLOCATABLE :: yudrop_n(:)
   double precision, ALLOCATABLE :: yudrop_n_1(:)
   double precision, ALLOCATABLE :: ydropmin(:)
@@ -333,7 +327,7 @@ implicit none
   double precision Hb
   double precision RoRef_air	
   integer number_steps
-  integer NR                                     !NR = number of reaches
+  integer NR                                     !NR = number of pipe links
   integer, ALLOCATABLE :: NX(:)
   integer Num_max_cells                          !maximum number of cells as a 
                                                  !  result of discretization
@@ -405,39 +399,6 @@ implicit none
   integer sum_no_converg
   double precision, ALLOCATABLE :: Klocal(:,:)
 
-! Rating curve
-  ! Maximum flow specified at the rating curve. This is used to check if the
-  ! water level in the rating curve is exceeded. 
-  double precision, ALLOCATABLE :: Max_flow_rating_curve(:) 
-  double precision, ALLOCATABLE :: Max_Head_rating_curve(:) 
-      
-! Cross-section area of weir (bottom to weir crest). 
-  double precision, ALLOCATABLE :: area_weir(:) 
-
-! Gates
-  double precision, ALLOCATABLE :: Cd_gate(:)	
-  double precision, ALLOCATABLE :: Hgate_open(:) !Gate opening in percentage
-  double precision, ALLOCATABLE :: h_gate_m(:)   !Height of gate opening in m
-
-  ! This defines if the Gate will be operated based on a threshold depth or 
-  ! if the operation is according to a time schedule (1: based on threshold depth,
-  ! 2: based on time schedule)
-  integer,          ALLOCATABLE :: gate_thresholdDepth_TimeSpecified(:)
-
- ! 0 if operation was not activated, 1 if gate operation was started or completed.
-  integer,          ALLOCATABLE :: gate_Activation(:) 
-
-  ! Initial & final times when gate operated
-  double precision, ALLOCATABLE :: t_gate_act_initial(:)
-  double precision, ALLOCATABLE :: t_gate_act_final(:)
-
-  !The depth in this node will be checked to open or close the gate  
-  character(IDLEN), ALLOCATABLE :: Depth_check_Node_Gate(:)
-
-  !Same as Depth_check_Node_Gate but in ITM value (i.e., integer)
-  integer,          ALLOCATABLE :: check_Node_Gate_ITM(:)       
-  double precision, ALLOCATABLE :: ClosureTime_Minutes_Gate(:) !closure/opening rate of the gate 
-
 ! Volume check       
   double precision vol_reserv_outflow_time_step
   double precision balance_volume_time_step
@@ -472,7 +433,6 @@ implicit none
   integer flowcaseIA(10)
   integer SumIDFIA(10)
   integer solve_full_eq(10)
-  integer init_volume_counter
   integer cond_mixed1(10)
   integer Idf01(10)
 
@@ -497,8 +457,6 @@ implicit none
   character*1000 error_message                   !@ITM@IGNORE
   integer error_message_len                      !@ITM@IGNORE
   parameter (error_message_len = 1000)           !@ITM@IGNORE
-
-  integer NumVolErrPoints                        !@ITM@IGNORE
 
 ! Parameters used for solving non-linear equations
   double precision paramOP1
@@ -581,11 +539,6 @@ implicit none
   integer ini_cond                               !Initial condition = constant water depth
   integer sum_temp                               !Initial condition = constant water depth
   double precision temp_outflow                  !Temporal value
-
-! Pumping rates at selected nodes. 
-  double precision, ALLOCATABLE :: Qpump(:)
-  double precision, ALLOCATABLE :: t_begin_pump(:)
-  integer,          ALLOCATABLE :: IDpump(:)
 
   integer CURRENT_REVISION                       !@ITM@IGNORE
   parameter (CURRENT_REVISION = 213)             !@ITM@IGNORE

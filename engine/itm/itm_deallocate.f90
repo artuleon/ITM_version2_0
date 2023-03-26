@@ -1,25 +1,14 @@
-!! This file is part of the ITM model.
-!!
-!! Copyright 2009 University of Illinois at Urbana-Champaign
-!! Copyright 2011 Oregon State University, Corvallis
-!!
-!! Authors: Arturo S. Leon (Hydraulics), Nils Oberg (User interface)
-!!
-!! ITM is a free software; you can redistribute it and/or modify it
-!! under the terms of the GNU General Public License as published
-!! by the Free Software Foundation; either version 2.0 of the
-!! License, or (at your option) any later version.
-!! 
-!! This program is distributed in the hope that it will be useful,
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-!! GNU General Public License for more details.
-!! 
-!! You should have received a copy of the GNU General Public License
-!! along with this program; if not, write to the Free Software
-!! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-!! 02110-1301, USA.
-!
+!******************************************************************************
+!Project:      ITM (Illinois Transient Model)
+!Version:      2.0
+!Module:       itm_deallocate
+!Description:  deallocates memory for arrays declared in common_module
+!Authors:      see AUTHORS
+!Copyright:    see LICENSE
+!License:      see LICENSE
+!Last Updated: 03/20/2023
+!******************************************************************************
+
 module itm_deallocate
 use common_module
 implicit none
@@ -91,33 +80,13 @@ subroutine itm_deallocate_all()
     FREE(hap)
     FREE(VOLap)
     
-    FREE(NoConvergence_Junction_GLOBAL)
-    FREE(sum_dry_bed_node)
     FREE(dropmin)
     FREE(ydropmin)
     FREE(yudrop_n_1)
     FREE(yudrop_n)
     
-    FREE(yres_up)
-    FREE(area_weir)
-    FREE(Max_Head_rating_curve)
-    FREE(Max_flow_rating_curve)
-    FREE(ClosureTime_Minutes_Gate)
-    FREE(check_Node_Gate_ITM)
-    FREE(Depth_check_Node_Gate)
-    FREE(t_gate_act_final)
-    FREE(t_gate_act_initial)
-    FREE(gate_Activation)
-    FREE(gate_thresholdDepth_TimeSpecified)
-    FREE(h_gate_m)
-    FREE(Hgate_open)
-    FREE(Cd_gate)
+    FREE(NonPipeFlowToNode)    
     
-    FREE(ID_Number_of_zero_drops)
-    FREE(PumpFlowToNode)    
-    
-    
-    FREE(Number_of_zero_drops)
     FREE(max_crown_pipe)
     FREE(max_elev_crown)
     FREE(yres_jun_old)
@@ -141,14 +110,7 @@ subroutine itm_deallocate_all()
     FREE(Fdownst)
     FREE(Fupst)
     FREE(Qbound)
-    
-    FREE(IDpump)
-    FREE(t_begin_pump)
-    FREE(Qpump)
-    
     FREE(S0)
-    FREE(Qpump_link)
-    
     
     FREE(Qmin)
     FREE(y_for_phi_max)
@@ -165,23 +127,14 @@ subroutine itm_deallocate_all()
     
     FREE(NX)
     FREE(Dx)
-    FREE(outflow_limited)
-    FREE(NPipes_At_Node_with_Pumps)
-    
-    FREE(V_over)
-    FREE(Noufl)
-    FREE(Ninf)
-    FREE(oufl)
-    FREE(inf)
-    FREE(Nnod)
     FREE(Klocal)
-    FREE(fd)
-    FREE(Nodetype)
-    FREE(NodetypePump)    
-    FREE(NodeNS)
-    FREE(nodeID)
-    FREE(NodePumpID)
+    FREE(nonpipe_flow)
     
+    FREE(outflow_limited)
+    FREE(V_over)
+    FREE(Nodetype)
+    FREE(nodeID)
+    FREE(NodeNS)
     
 end subroutine itm_deallocate_all
 

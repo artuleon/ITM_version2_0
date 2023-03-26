@@ -3,8 +3,8 @@ unit Fmap;
 {-------------------------------------------------------------------}
 {                    Unit:    Fmap.pas                              }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/22/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/06/23                              }
 {                                                                   }
 {    MDI child form that displays a map of the study area           }
 {    being analyzed. The map is an object of class TMap             }
@@ -807,7 +807,7 @@ begin
   Accept := False;
   if Source = MainForm.ItemListBox then
   begin
-    if CurrentList in [JUNCTION, BOUNDARY, GATE, STORAGE, MAPLABEL]
+    if CurrentList in [JUNCTION, BOUNDARY, STORAGE, MAPLABEL]
     then Accept := True;
   end;
 end;
@@ -887,7 +887,7 @@ begin
   JUNCTION..STORAGE:
     Cursor := crXHAIR;
 
-  CONDUIT:
+  CONDUIT..OUTLET:
     Cursor := -3;  //crCROSS
 
   MAPLABEL:
@@ -1071,7 +1071,7 @@ begin
     case CurrentTool of
     JUNCTION..STORAGE:  Uedit.AddNode(CurrentTool, CurrentX, CurrentY);
     MAPLABEL:           GoLabeling(X, Y);
-    CONDUIT:            GoLinking(X, Y);
+    CONDUIT..OUTLET:    GoLinking(X, Y);
     SELECT,
     VERTEXSELECT:       EndSelecting;
     PAN:                EndPanning;

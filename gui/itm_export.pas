@@ -3,8 +3,8 @@ unit itm_export;
 {-------------------------------------------------------------------}
 {                    Unit:    itm_export.pas                        }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    12/01/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/05/23                              }
 {                                                                   }
 {   Delphi Pascal unit that exports current project data to an      }
 {   ITM formatted input file.                                       }
@@ -25,7 +25,7 @@ const
 
 var
   NodeStartIndex: array[JUNCTION .. STORAGE] of Integer;
-  CurveStartIndex: array[GATECURVE .. CONTROLCURVE] of Integer;
+  CurveStartIndex: array[STORAGECURVE .. CONTROLCURVE] of Integer;
   NumCurves: Integer;
 
 function GetNodeIndex(NodeName: String): Integer;
@@ -45,7 +45,7 @@ end;
 procedure ExportCounts(S: TStringlist);
 var
   NumNodes: Integer;
-  NumLinks: Integer;
+//  NumLinks: Integer;
   I: Integer;
 begin
   NodeStartIndex[JUNCTION] := 0;
@@ -55,17 +55,21 @@ begin
     NodeStartIndex[I] := NodeStartIndex[I-1] + Project.Lists[I-1].Count;
     NumNodes := NumNodes + Project.Lists[I].Count;
   end;
-  NumLinks := Project.Lists[CONDUIT].Count;
-  CurveStartIndex[GATECURVE] := 0;
-  NumCurves := Project.Lists[GATECURVE].Count;
-  for I := GATECURVE+1 to CONTROLCURVE do
+//  NumLinks := Project.Lists[CONDUIT].Count;
+//  for I := PUMP to OUTLET do
+//    NumLinks := NumLinks + Project.Lists[I].Count;
+  CurveStartIndex[STORAGECURVE] := 0;
+  NumCurves := Project.Lists[STORAGECURVE].Count;
+  for I := STORAGECURVE+1 to CONTROLCURVE do
   begin
     CurveStartIndex[I] := CurveStartIndex[I-1] + Project.Lists[I-1].Count;
     NumCurves := NumCurves + Project.Lists[I].Count;
   end;
+
   S.Add(IntToStr(NumNodes));
-  S.Add(IntToStr(NumLinks));
-  S.Add(IntToStr(Project.GetPumpCount));
+  for I := CONDUIT to OUTLET do
+    S.Add(IntToStr(Project.Lists[I].Count));
+ // S.Add(IntToStr(NumLinks));
   S.Add(IntToStr(NumCurves));
   S.Add(IntToStr(Project.Lists[TIMESERIES].Count));
 end;
@@ -119,78 +123,6 @@ begin
         Line := Line + Tab + '0'
       else
         Line := Line + Tab + '1';
-      S.Add(Line);
-    end;
-  end;
-end;
-
-procedure ExportGates(S: TStringlist);
-var
-  I: Integer;
-  J: Integer;
-  N: TNode;
-  Line: String;
-  CtrlType  : String;
-  CtrlSeries: String;
-  CtrlNode  : String;
-  CtrlCurve : String;
-begin
-  with Project.Lists[GATE] do
-  begin
-    S.Add(IntToStr(Count));
-    for I := 0 to Count-1 do
-    begin
-      N := TNode(Objects[I]);
-      Line := Strings[I];
-      Line := Line + Tab + N.Data[NODE_INVERT_INDEX];
-      Line := Line + Tab + N.Data[GATE_INIT_OPENING_INDEX];
-      Line := Line + Tab + N.Data[GATE_OPEN_RATE_INDEX];
-
-      J := GetCurveIndex(GATECURVE, N.Data[GATE_HLOSS_CURVE_INDEX]);
-      Line := Line + Tab + IntToStr(J+1);
-
-      CtrlType := N.Data[GATE_CONTROL_METHOD_INDEX];
-      CtrlSeries := '0';
-      CtrlNode := '0';
-      CtrlCurve := '0';
-
-      if SameText(CtrlType, ControlMethods[1]) then
-      begin
-        J := Project.Lists[TIMESERIES].IndexOf(N.Data[GATE_TIME_SERIES_INDEX]);
-        CtrlSeries := IntToStr(J+1);
-      end
-      else if SameText(CtrlType, ControlMethods[2]) then
-      begin
-        J := GetNodeIndex(N.Data[GATE_CONTROL_NODE_INDEX]);
-        CtrlNode := IntToStr(J+1);
-        J := GetCurveIndex(CONTROLCURVE, N.Data[GATE_CONTROL_CURVE_INDEX]);
-        CtrlCurve := IntToStr(J+1);
-      end;
-
-      Line := Line + Tab + CtrlSeries + Tab + CtrlNode + Tab + CtrlCurve;
-      S.Add(Line);
-    end;
-  end;
-end;
-
-procedure ExportWeirs(S: TStringlist);
-var
-  I: Integer;
-  J: Integer;
-  N: TNode;
-  Line: String;
-begin
-  with Project.Lists[WEIR] do
-  begin
-    S.Add(IntToStr(Count));
-    for I := 0 to Count-1 do
-    begin
-      N := TNode(Objects[I]);
-      Line := Strings[I];
-      Line := Line + Tab + N.Data[NODE_INVERT_INDEX];
-      Line := Line + Tab + N.Data[WEIR_CREST_ELEV_INDEX];
-      J := GetCurveIndex(RATINGCURVE, N.Data[WEIR_RATING_CURVE_INDEX]);
-      Line := Line + Tab + IntToStr(J+1);
       S.Add(Line);
     end;
   end;
@@ -261,56 +193,177 @@ begin
   end;
 end;
 
+function GetControlLine(L: TLink; LinkType: Integer; CtrlIndex: Integer): String;
+var
+  J: Integer;
+begin
+  if SameText(L.Data[CtrlIndex], 'TIME') then
+  begin
+    Result := '1 ';
+    J := Project.Lists[TIMESERIES].IndexOf(L.Data[CtrlIndex + 1]);
+    Result := Result + ' ' + IntToStr(J+1) + ' 0 0';
+  end
+
+  else if SameText(L.Data[CtrlIndex], 'DEPTH') then
+  begin
+    Result := '2  0 ';
+    J := GetNodeIndex(L.Data[CtrlIndex + 2]);
+    Result := Result + ' ' + IntToStr(J+1);
+    J := GetCurveIndex(CONTROLCURVE, L.Data[CtrlIndex + 3]);
+    Result := Result + ' ' + IntToStr(J+1);
+  end
+
+  else Result := '0 0 0 0';
+end;
+
 procedure ExportPumps(S: TStringlist);
 var
   I   : Integer;
-  J   : Integer;
+  K   : Integer;
   N   : Integer;
   L   : TLink;
   Line: String;
-  CtrlType  : String;
-  CtrlSeries: String;
-  CtrlNode  : String;
-  CtrlCurve : String;
 begin
-  N := Project.GetPumpCount;
+  N := Project.Lists[PUMP].Count;
   S.Add(IntToStr(N));
-  if N > 0 then with Project.Lists[CONDUIT] do
+  if N > 0 then with Project.Lists[PUMP] do
   begin
     for I := 0 to Count-1 do
     begin
       L := TLink(Objects[I]);
-      if L.HasPump = False then continue;
-      Line := IntToStr(I+1);
-      J := GetCurveIndex(PUMPCURVE, L.Data[PUMP_CURVE_INDEX]);
-      Line := Line + Tab + IntToStr(J+1);
-      Line := Line + Tab + L.Data[PUMP_LOSS_COEFF_INDEX];
+      Line := Strings[I];
+      K := GetNodeIndex(L.Node1.ID);
+      Line := Line + Tab + IntToStr(K+1);
+      K := GetNodeIndex(L.Node2.ID);
+      Line := Line + Tab + IntToStr(K+1);
+      K := GetCurveIndex(PUMPCURVE, L.Data[PUMP_CURVE_INDEX]);
+      Line := Line + Tab + IntToStr(K+1);
+
+      Line := Line + Tab + L.Data[PUMP_DIAM_INDEX];
+      Line := Line + Tab + L.Data[PUMP_LENGTH_INDEX];
       Line := Line + Tab + L.Data[PUMP_FRICTION_INDEX];
+      Line := Line + Tab + L.Data[PUMP_LOSS_COEFF_INDEX];
       Line := Line + Tab + L.Data[PUMP_INIT_SETTING_INDEX];
+      S.Add(Line);
+      S.Add(GetControlLine(L, PUMP, PUMP_CONTROL_TYPE_INDEX));
+    end;
+  end;
+end;
 
-      CtrlType := L.Data[PUMP_CONTROL_METHOD_INDEX];
-      CtrlSeries := '0';
-      CtrlNode := '0';
-      CtrlCurve := '0';
+procedure ExportOrifices(S: TStringlist);
+var
+  I   : Integer;
+  K   : Integer;
+  N   : Integer;
+  L   : TLink;
+  Line: String;
+begin
+  N := Project.Lists[ORIFICE].Count;
+  S.Add(IntToStr(N));
+  if N > 0 then with Project.Lists[ORIFICE] do
+  begin
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      Line := Strings[I];
+      K := GetNodeIndex(L.Node1.ID);
+      Line := Line + Tab + IntToStr(K+1);
+      K := GetNodeIndex(L.Node2.ID);
+      Line := Line + Tab + IntToStr(K+1);
+      K := 0;
+      if SameText(L.Data[ORIFICE_TYPE_INDEX], 'BOTTOM') then K := 1;
+      Line := Line + Tab + IntToStr(K);
+      K := 0;
+      if SameText(L.Data[ORIFICE_SHAPE_INDEX], 'RECTANGULAR') then K := 1;
+      Line := Line + Tab + IntToStr(K);
+      Line := Line + Tab + L.Data[ORIFICE_HEIGHT_INDEX];
+      Line := Line + Tab + L.Data[ORIFICE_WIDTH_INDEX];
+      Line := Line + Tab + L.Data[ORIFICE_BOTTOM_HT_INDEX];
+      Line := Line + Tab + L.Data[ORIFICE_COEFF_INDEX];
+      K := 0;
+      if SameText(L.Data[ORIFICE_FLAPGATE_INDEX], 'YES') then K := 1;
+      Line := Line + Tab + IntToStr(K);
+      Line := Line + Tab + L.Data[ORIFICE_INIT_SETTING_INDEX];
+      Line := Line + Tab + L.Data[ORIFICE_CLOSE_RATE_INDEX];
+      S.Add(Line);
+      S.Add(GetControlLine(L, ORIFICE, ORIFICE_CONTROL_TYPE_INDEX));
+    end;
+  end;
+end;
 
-      if SameText(CtrlType, ControlMethods[1]) then
-      begin
-        J := Project.Lists[TIMESERIES].IndexOf(L.Data[PUMP_TIME_SERIES_INDEX]);
-        CtrlSeries := IntToStr(J+1);
-      end
-      else if SameText(CtrlType, ControlMethods[2]) then
-      begin
-        J := GetNodeIndex(L.Data[PUMP_CONTROL_NODE_INDEX]);
-        CtrlNode := IntToStr(J+1);
-        J := GetCurveIndex(CONTROLCURVE, L.Data[PUMP_CONTROL_CURVE_INDEX]);
-        CtrlCurve := IntToStr(J+1);
-      end;
+procedure ExportWeirs(S: TStringlist);
+var
+  I   : Integer;
+  K   : Integer;
+  N   : Integer;
+  L   : TLink;
+  Line: String;
+begin
+  N := Project.Lists[WEIR].Count;
+  S.Add(IntToStr(N));
+  if N > 0 then with Project.Lists[WEIR] do
+  begin
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      Line := Strings[I];
+      K := GetNodeIndex(L.Node1.ID);
+      Line := Line + Tab + IntToStr(K+1);
+      K := GetNodeIndex(L.Node2.ID);
+      Line := Line + Tab + IntToStr(K+1);
+      K := Uutils.FindKeyWord(L.Data[WEIR_TYPE_INDEX], WeirTypes, 3);
+      if K < 0 then K := 0;
+      Line := Line + Tab + IntToStr(K);
+      Line := Line + Tab + L.Data[WEIR_HEIGHT_INDEX];
+      Line := Line + Tab + L.Data[WEIR_WIDTH_INDEX];
+//      Line := Line + Tab + L.Data[WEIR_SLOPE_INDEX];
+      Line := Line + Tab + L.Data[WEIR_CREST_INDEX];
+      Line := Line + Tab + L.Data[WEIR_COEFF_INDEX];
+      K := 0;
+//      if SameText(L.Data[WEIR_FLAPGATE_INDEX], 'YES') then K := 1;
+//      Line := Line + Tab + IntToStr(K);
+      Line := Line + Tab + L.Data[WEIR_CONTRACT_INDEX];
+//      Line := Line + Tab + L.Data[WEIR_END_COEFF_INDEX];
+      K := 0;
+      if SameText(L.Data[WEIR_SURCHARGE_INDEX], 'YES') then K := 1;
+      Line := Line + Tab + IntToStr(K);
+      Line := Line + Tab + L.Data[WEIR_INIT_SETTING_INDEX];
+      Line := Line + Tab + L.Data[WEIR_CLOSE_RATE_INDEX];
+      S.Add(Line);
+      S.Add(GetControlLine(L, WEIR, WEIR_CONTROL_TYPE_INDEX));
+    end;
+  end;
+end;
 
-      Line := Line + Tab + CtrlSeries + Tab + CtrlNode + Tab + CtrlCurve;
+procedure ExportOutlets(S: TStringlist);
+var
+  I   : Integer;
+  K   : Integer;
+  N   : Integer;
+  L   : TLink;
+  Line: String;
+begin
+  N := Project.Lists[OUTLET].Count;
+  S.Add(IntToStr(N));
+  if N > 0 then with Project.Lists[OUTLET] do
+  begin
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      Line := Strings[I];
+      K := GetNodeIndex(L.Node1.ID);
+      Line := Line + Tab + IntToStr(K+1);
+      K := GetNodeIndex(L.Node2.ID);
+      Line := Line + Tab + IntToStr(K+1);
+      Line := Line + Tab + L.Data[OUTLET_OFFSET_INDEX];
+      K := 0;
+      if SameText(L.Data[OUTLET_FLAPGATE_INDEX], 'YES') then K := 1;
+      Line := Line + Tab + IntToStr(K);
+      K := GetCurveIndex(RATINGCURVE, L.Data[OUTLET_CURVE_INDEX]);
+      Line := Line + Tab + IntToStr(K+1);
       S.Add(Line);
     end;
   end;
-
 end;
 
 procedure ExportInflows(S: TStringlist);
@@ -352,7 +405,7 @@ begin
   if NumCurves = 0 then exit;
 
   // Loop through each type of curve
-  for M := GateCurve to ControlCurve do
+  for M := StorageCurve to ControlCurve do
   begin
     with Project.Lists[M] do
     begin
@@ -540,11 +593,12 @@ begin
     ExportCounts(S);
     ExportJunctions(S);
     ExportBoundaries(S);
-    ExportGates(S);
-    ExportWeirs(S);
     ExportStorage(S);
     ExportConduits(S);
     ExportPumps(S);
+    ExportOrifices(S);
+    ExportWeirs(S);
+    ExportOutlets(S);
     ExportInflows(S);
     ExportCurves(S);
     ExportTimeseries(S);
@@ -552,6 +606,39 @@ begin
     S.SaveToFile(Fname);
   finally
     S.Free;
+  end;
+end;
+
+procedure ValidateControls(LinkType: Integer; CtrlIndex: Integer; ErrList: TStringlist);
+var
+  I : Integer;
+  L : TLink;
+  S : String;
+begin
+  with Project.Lists[LinkType] do
+  begin
+    for I := 0 to Count-1 do
+    begin
+      L := TLink(Objects[I]);
+      if SameText(L.Data[CtrlIndex], 'TIME') then
+      begin
+        S := L.Data[CtrlIndex + 1];
+        if Project.Lists[TIMESERIES].IndexOf(S) < 0 then
+          ErrList.Add('- Control Time Series ' + S +
+            ' used by Link ' + L.ID + ' does not exist.');
+      end
+      else if SameText(L.Data[CtrlIndex], 'DEPTH') then
+      begin
+        S := L.Data[CtrlIndex + 2];
+        if GetNodeIndex(S) < 0 then
+          ErrList.Add('- Control Node ' + S +
+            ' used by Link ' + L.ID + ' does not exist.');
+        S := L.Data[CtrlIndex + 3];
+        if GetCurveIndex(CONTROLCURVE, S) < 0 then
+          ErrList.Add('- Control Curve ' + S +
+            ' used by Link ' + L.ID + ' does not exist.');
+      end;
+    end;
   end;
 end;
 
@@ -568,44 +655,6 @@ begin
   Result := True;
   ErrList := TStringList.Create;
   try
-    // Validate Gate nodes
-    with Project.Lists[GATE] do
-    begin
-      for I := 0 to Count-1 do
-      begin
-        N := TNode(Objects[I]);
-        if GetCurveIndex(GATECURVE, N.Data[GATE_HLOSS_CURVE_INDEX]) < 0 then
-          ErrList.Add('- Gate Curve ' + N.Data[GATE_HLOSS_CURVE_INDEX] +
-            ' used by Gate ' + N.ID + ' does not exist.');
-        if SameText(N.Data[GATE_CONTROL_METHOD_INDEX], ControlMethods[1]) then
-        begin
-          if Project.Lists[TIMESERIES].IndexOf(N.Data[GATE_TIME_SERIES_INDEX]) < 0 then
-            ErrList.Add('- Time Series ' + N.Data[GATE_TIME_SERIES_INDEX] +
-              ' used by Gate ' + N.ID + ' does not exist.');
-        end
-        else if SameText(N.Data[GATE_CONTROL_METHOD_INDEX], ControlMethods[2]) then
-        begin
-          if GetNodeIndex(N.Data[GATE_CONTROL_NODE_INDEX]) < 0 then
-            ErrList.Add('- Control Node ' + N.Data[GATE_CONTROL_NODE_INDEX] +
-              ' used by Gate ' + N.ID + ' does not exist.');
-          if GetCurveIndex(CONTROLCURVE, N.Data[GATE_CONTROL_CURVE_INDEX]) < 0 then
-            ErrList.Add('- Control Curve ' + N.Data[GATE_CONTROL_CURVE_INDEX] +
-              ' used by Gate ' + N.ID + ' does not exist.');
-        end;
-      end;
-    end;
-
-    // Validate Weir nodes
-    with Project.Lists[WEIR] do
-    begin
-      for I := 0 to Count-1 do
-      begin
-        N := TNode(Objects[I]);
-        if GetCurveIndex(RATINGCURVE, N.Data[WEIR_RATING_CURVE_INDEX]) < 0 then
-          ErrList.Add('- Rating Curve ' + N.Data[WEIR_RATING_CURVE_INDEX] +
-              ' used by Weir ' + N.ID + ' does not exist.');
-      end;
-    end;
 
     // Validate Storage nodes
     with Project.Lists[STORAGE] do
@@ -620,32 +669,33 @@ begin
     end;
 
     // Validate Pump links
-    with Project.Lists[CONDUIT] do
+    with Project.Lists[PUMP] do
     begin
       for I := 0 to Count-1 do
       begin
         L := TLink(Objects[I]);
-        if L.HasPump = False then continue;
         if GetCurveIndex(PUMPCURVE, L.Data[PUMP_CURVE_INDEX]) < 0 then
           ErrList.Add('- Pump Curve ' + L.Data[PUMP_CURVE_INDEX] +
               ' used by Pump link ' + L.ID + ' does not exist.');
-        if SameText(L.Data[PUMP_CONTROL_METHOD_INDEX], ControlMethods[1]) then
-        begin
-          if Project.Lists[TIMESERIES].IndexOf(L.Data[PUMP_TIME_SERIES_INDEX]) < 0 then
-            ErrList.Add('- Time Series ' + L.Data[PUMP_TIME_SERIES_INDEX] +
-              ' used by Pump ' + L.ID + ' does not exist.');
-        end
-        else if SameText(L.Data[PUMP_CONTROL_METHOD_INDEX], ControlMethods[2]) then
-        begin
-          if GetNodeIndex(L.Data[PUMP_CONTROL_NODE_INDEX]) < 0 then
-            ErrList.Add('- Control Node ' + L.Data[PUMP_CONTROL_NODE_INDEX] +
-              ' used by Pump ' + L.ID + ' does not exist.');
-          if GetCurveIndex(CONTROLCURVE, L.Data[PUMP_CONTROL_CURVE_INDEX]) < 0 then
-            ErrList.Add('- Control Curve ' + L.Data[PUMP_CONTROL_CURVE_INDEX] +
-              ' used by Pump ' + L.ID + ' does not exist.');
-        end;
       end;
     end;
+
+    // Validate Outlet links
+    with Project.Lists[OUTLET] do
+    begin
+      for I := 0 to Count-1 do
+      begin
+        L := TLink(Objects[I]);
+        if GetCurveIndex(RATINGCURVE, L.Data[OUTLET_CURVE_INDEX]) < 0 then
+          ErrList.Add('- Rating Curve ' + L.Data[OUTLET_CURVE_INDEX] +
+              ' used by Outlet link ' + L.ID + ' does not exist.');
+      end;
+    end;
+
+    // Validate link controls
+    ValidateControls(PUMP, PUMP_CONTROL_TYPE_INDEX, ErrList);
+    ValidateControls(ORIFICE, ORIFICE_CONTROL_TYPE_INDEX, ErrList);
+    ValidateControls(WEIR, WEIR_CONTROL_TYPE_INDEX, ErrList);
 
     // Validate inflow time series
     with Project.Lists[JUNCTION] do

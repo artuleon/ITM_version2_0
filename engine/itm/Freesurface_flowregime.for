@@ -25,15 +25,16 @@
       !&flow_regIA1,flowcaseIA1,nodetype1,cond_mixed,sum,yw0,Aw0,Qw0,Idf0)
      
 	!This routine is used for determining if a junction/reservoir/dropshaft boundary is surcharged or not. 
-	use common_module 
+	use common_module
+      use itm_util
 	implicit none	
 	integer k,i,R,sum,flow_regIA1,flowcaseIA1,nodetype1
 	integer IDf11,IDfb_old,cond_mixed,node_pressur,IDfb_reser
 	double precision dr,tol_const_state,tempIA
-	double precision ScIA,yb,A,Q,Ab,dh,Ts,RH,Ycrit,Q_allow
+	double precision ScIA,yb,A,Q,Ab,dh,Ts,RH,Q_allow    ! Ycrit -- accessible by USE ITM_UTIL
 	double precision Ref_level,tol_level
 	double precision hIA,hIC,vIA,Q11,y11,A11,hIA_old,ytemp,Slo
-	double precision F1,d1,A1_temp,Ynormal,Yconjugate,area,y
+	double precision F1,d1,A1_temp,area,y      !Ynormal,Yconjugate -- accessible by USE ITM_UTIL
 	double precision Ener_super,E1,Wpred,Pw0
 	double precision FF1,FF2,yL,YR,QL,QR
       double precision Eres, yc_res,yc_11,yc_11_hager,Ac_temp,Qc_temp 

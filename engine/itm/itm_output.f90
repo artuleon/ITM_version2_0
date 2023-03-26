@@ -1,28 +1,14 @@
-! This file is part of the ITM model.
-!
-! Copyright 2009 University of Illinois at Urbana-Champaign
-! Copyright 2011 Oregon State University, Corvallis
-!
-! ITM is a free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published
-! by the Free Software Foundation; either version 2.0 of the
-! License, or (at your option) any later version.
-! 
-! This program is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-! 
-! You should have received a copy of the GNU General Public License
-! along with this program; if not, write to the Free Software
-! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-! 02110-1301, USA.
-!--------------------------------------------------------------------
-
-!==============================================================================
-! This module is used to write ITM output to files.
-!==============================================================================
-    
+!******************************************************************************
+!Project:      ITM (Illinois Transient Model)
+!Version:      2.0
+!Module:       itm_output
+!Description:  write ITM output to files.
+!Authors:      see AUTHORS
+!Copyright:    see LICENSE
+!License:      see LICENSE
+!Last Updated: 03/15/2023
+!******************************************************************************
+  
 module itm_output
 use common_module
 use itm_accessors
@@ -40,17 +26,17 @@ real(8), private, allocatable :: max_link_veloc(:)
 real(8), private, allocatable :: max_link_depth(:)
 
 integer, private :: magic_number = 516114523
-integer, private :: version = 15001
+integer, private :: version = 20001
 integer, private :: num_steps
 
 contains
     
 subroutine itm_output_open(out_file_name, itm_file_name)
+character(*), intent(in ) :: out_file_name
+character(*), intent(in ) :: itm_file_name
 !==============================================================================
 ! Open the binary output files that save results at each reporting period
 !==============================================================================
-character(*), intent(in ) :: out_file_name
-character(*), intent(in ) :: itm_file_name
 
 integer :: error_code
 integer :: cms_units_code = 3    ! cms flow units
@@ -83,6 +69,7 @@ integer :: num_link_outputs = 4  ! flow, depth, velocity, Froude
     write(94) Nnodes, Nlinks
     write(94) num_node_inputs, num_link_inputs, num_node_outputs, num_link_outputs
     call save_input_data(num_node_inputs, num_link_inputs)
+    write(94) T_START_REPORT, Tstor
    
     ! Allocate memory for summary statistics
     allocate(avg_node_depth(Nnodes))
@@ -130,7 +117,7 @@ subroutine itm_output_write_title()
 ! Write a header and project title to the formatted report file.
 !==============================================================================
 
-    write(98,*) ' ILLINOIS TRANSIENT MODEL - VERSION 1.5'
+    write(98,*) ' ILLINOIS TRANSIENT MODEL - VERSION 2.0'
     write(98,*) ' ======================================'
     write(98,*) '  '
     if (len_trim(project_title) > 0) then
@@ -142,11 +129,11 @@ end subroutine itm_output_write_title
 
 
 subroutine itm_output_save_results(current_time)
+real(8), intent(in) :: current_time
 !==============================================================================
 ! Save computed results to the binary output files at the current elapsed time
 ! in seconds.
 !==============================================================================
-real(8), intent(in) :: current_time
 integer :: i, j, num_cells
 logical :: is_open
     
@@ -165,38 +152,30 @@ logical :: is_open
     end do
 
     ! Save results for each link
-    num_cells = MaxNumPlotCells	      
+    !num_cells = MaxNumPlotCells	      
     do j = 1, Nlinks
         call save_link_results(j, current_time)
-        call save_pipe_cell_results(j, num_cells, current_time)
+        if (j <= Npipes) then
+           num_cells = MaxNumPlotCells	      
+           call save_pipe_cell_results(j, num_cells, current_time)
+        end if
     end do
     
 end subroutine itm_output_save_results
 
   
 subroutine save_node_results(i, current_time)
+integer, intent(in) :: i
+real(8), intent(in) :: current_time
 !==============================================================================
 !  Save node results to the binary output file at the current time.
 !==============================================================================
-integer, intent(in) :: i
-real(8), intent(in) :: current_time
 real(8) :: depth, head, volume, lat_flow, invert
     
     ! Find water depth & head at node
     invert = junct_elev(i)
-    depth = itm_get_node_depth(i)
+    depth = max(yres_jun_old(i), 0d0)
     head = depth + invert
-    
-    ! Adjust depth at WEIR nodes (where it's computed as height above crest) 
-    if (node_type(i) .eq. WEIR) then
-        if (depth <= 0d0) then
-            depth = 0d0
-            head = weir_invert(i)
-        else
-            depth = depth + (junct_elev(i) - weir_invert(i))
-            head = weir_invert(i) + depth
-        end if
-    end if
     
     ! Update node statistics
     avg_node_depth(i) = avg_node_depth(i) + depth
@@ -206,7 +185,13 @@ real(8) :: depth, head, volume, lat_flow, invert
     end if
     
     ! Find node's volume & lateral inflow
-    call itm_get_storage(i, depth, volume)
+    if (BCnode(i) == JUNC2 .or. BCnode(i) == DROPSHAFT) then
+	    volume = Ares_junct(i) * depth	
+    else if (BCnode(i) == RESERVOIR) then
+        call itm_get_storage_volume(i, depth, volume)
+    else
+        volume = 0d0
+    end if
     call itm_get_inflow(i, current_time, lat_flow)
     
     ! Write node results as 4-byte reals to binary output file
@@ -216,33 +201,30 @@ end subroutine save_node_results
   
     
 subroutine save_link_results(j, current_time)
+integer, intent(in) :: j
+real(8), intent(in) :: current_time
 !==============================================================================
 !  Save link results to the binary output file at the current time.
 !==============================================================================
-integer, intent(in) :: j
-real(8), intent(in) :: current_time
 integer :: cell
 real(8) :: flow, depth, veloc, froude
 
-    ! Find results at mid-point of link
-    cell = 1 + int(Nx(j) / 2)	    
-    
-    if (pump_index(j) > 0) then !Pump case (pump_index(j) = 0 is a regular link, pump_index(j) > 0 is a pump)    
-        flow = Qpump_link(j)
-        depth = d(j)
-        !veloc = abs(flow) / Area_full(j)
-        veloc = flow / Area_full(j)
-        froude = -10000d0
+    ! Non-pipe links
+    if (j > Npipes) then     
+        flow = nonpipe_flow(j - Npipes)
+        depth = 0d0
+        veloc = 0d0
+        froude = 0d0
+        
+    ! Pipe links - use results for mid-point cell
     else
+        cell = 1 + int(Nx(j) / 2)	    
         flow = Q0(j, cell) 
-        depth =  h0(j, cell) !min(h0(j, cell), d(j)) !This is not the minimum of ho and D. The pressure head to plot on the time seris should be this. 
-        !Otherwise we need to distinguis between pressure head and depth
-        !veloc = abs(Q0(j, cell) / A0(j, cell))
-        veloc = Q0(j, cell) / A0(j, cell)
+        depth = h0(j, cell)
+        veloc = flow / A0(j, cell)
         froude = abs(veloc) / sqrt(g * A0(j, cell) / get_surface_width(j, cell))
     end if
-    
-    
+   
     ! Update link statistics
     if (abs(flow) > max_link_flow(j)) then
         max_link_flow(j) = abs(flow)
@@ -258,11 +240,11 @@ end subroutine save_link_results
 
   
 function get_surface_width(link_index, cell_num) result(width)
+integer, intent(in) :: link_index, cell_num
+real(8)             :: width
 !==============================================================================
 !  Find the water surface width across a given pipe cell.
 !==============================================================================
-integer, intent(in) :: link_index, cell_num
-real(8) :: width
 real(8) :: AA, Ts, RH
 
     call Area_from_H(link_index, h0(link_index, cell_num), &
@@ -273,12 +255,12 @@ end function get_surface_width
   
 
 subroutine save_pipe_cell_results(j, num_cells, current_time)
-!==============================================================================
-!  Save the water depths along the cells of a pipe at the current time.
-!==============================================================================
 integer, intent(in   ) :: j
 integer, intent(inout) :: num_cells
 real(8), intent(in   ) :: current_time
+!==============================================================================
+!  Save the water depths along the cells of a pipe at the current time.
+!==============================================================================
 real(8) :: stations(num_cells)  ! x-station
 real(8) :: depths(num_cells)    ! depth at x-station
 real(8) :: dxp, x1p, x2p, sum_temp2
@@ -305,7 +287,7 @@ logical :: is_open
     end if
 
     do i = 1, num_cells
-        if (depths(i) < 0d0 .or. pump_index(j) > 0) then  !fully_pressuri(j) == 2 never assigned
+        if (depths(i) < 0d0) then
             depths(i) = yref(j)
         end if
     end do
@@ -319,13 +301,13 @@ end subroutine save_pipe_cell_results
   
   
 subroutine get_cell_limits(j, k, dxp, x1p, x2p, lim1, lim2)
-!==============================================================================
-!  Find a range of pipe cells over which depths are averaged.
-!==============================================================================
 integer, intent(in ) :: j, k
 real(8), intent(in ) :: dxp
 real(8), intent(out) :: x1p, x2p
 integer, intent(out) :: lim1, lim2
+!==============================================================================
+!  Find a range of pipe cells over which depths are averaged.
+!==============================================================================
 real(8) :: con1, con2
  
     x1p = (k-1) * dxp
@@ -347,12 +329,12 @@ end subroutine get_cell_limits
   
 
 subroutine get_cell_result(j, x1p, x2p, lim1, lim2, station, depth)
-!==============================================================================
-!  Get the average depth within a range of pipe cells.
-!==============================================================================
 integer, intent(in ) :: j, lim1, lim2
 real(8), intent(in ) :: x1p, x2p
 real(8), intent(out) :: station, depth
+!==============================================================================
+!  Get the average depth within a range of pipe cells.
+!==============================================================================
 integer :: i, p
 real(8) :: sum_temp2
 
@@ -394,14 +376,15 @@ end subroutine get_cell_result
   
 
 subroutine save_input_data(num_node_inputs, num_link_inputs)
+integer, intent(in) :: num_node_inputs, num_link_inputs
 !==============================================================================
 !  Save selected node and pipe input data to the binary output file that are
 !  needed to generate pipe profile plots in the GUI.
 !  (Note: data saved as 4-byte reals.)
 !==============================================================================
-integer, intent(in) :: num_node_inputs, num_link_inputs
 integer :: i, j
 real(8) :: max_depth, offset1, offset2, invert
+real :: x
 
     do i = 1, Nnodes
         invert = junct_elev(i)
@@ -425,6 +408,11 @@ real(8) :: max_depth, offset1, offset2, invert
         write(94) link_type(i), real(offset1), real(offset2), &
             real(d(i)), real(length(i))
     end do
+    
+    x = 0
+    do i = Npipes+1, Nlinks
+        write(94)  link_type(i), x, x, x, x
+    end do        
     
 end subroutine save_input_data
   
@@ -575,11 +563,11 @@ end subroutine write_link_summary
 
     
 subroutine convert_time(secs, days, hrs, mins)
+real(8), intent(in ) :: secs
+integer, intent(out) :: days, hrs, mins
 !==============================================================================
 ! Converts seconds to days, hours, minutes
 !==============================================================================
-real(8), intent(in ) :: secs
-integer, intent(out) :: days, hrs, mins
 real(8) :: secs_left, real_days, real_hrs, real_mins
 
     secs_left = secs

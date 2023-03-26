@@ -1,25 +1,14 @@
-!! This file is part of the ITM model.
-!!
-!! Copyright 2009 University of Illinois at Urbana-Champaign
-!! Copyright 2011 Oregon State University, Corvallis
-!!
-!! Authors: Arturo S. Leon (Hydraulics), Nils Oberg (User interface)
-!!
-!! ITM is a free software; you can redistribute it and/or modify it
-!! under the terms of the GNU General Public License as published
-!! by the Free Software Foundation; either version 2.0 of the
-!! License, or (at your option) any later version.
-!! 
-!! This program is distributed in the hope that it will be useful,
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-!! GNU General Public License for more details.
-!! 
-!! You should have received a copy of the GNU General Public License
-!! along with this program; if not, write to the Free Software
-!! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-!! 02110-1301, USA.
-!
+!******************************************************************************
+!Project:      ITM (Illinois Transient Model)
+!Version:      2.0
+!Module:       itm_allocate
+!Description:  allocates memory for arrays declared in common_module
+!Authors:      see AUTHORS
+!Copyright:    see LICENSE
+!License:      see LICENSE
+!Last Updated: 03/01/2023
+!******************************************************************************
+
 module itm_allocate
 use common_module
 implicit none
@@ -30,25 +19,15 @@ subroutine itm_allocate_general()
 integer :: NR
 
     NR = Npipes
-    ALLOCATE (nodeID(Nnodes,10))
-    ALLOCATE (NodePumpID(Nnodes,10))   
-    
     ALLOCATE (NodeNS(Nnodes))
+    ALLOCATE (nodeID(Nnodes,10))
     ALLOCATE (Nodetype(Nnodes,10))
-    ALLOCATE (NodetypePump(Nnodes,10))
-    
-    
-    ALLOCATE (fd(Nlinks))
-    ALLOCATE (Klocal(Nlinks,2))
-    ALLOCATE (Nnod(Nnodes))     
-    ALLOCATE (inf(Nnodes,3))
-    ALLOCATE (oufl(Nnodes,3))
-    ALLOCATE (Ninf(Nnodes))
-    ALLOCATE (Noufl(Nnodes)) 
     ALLOCATE (V_over(Nnodes))
     ALLOCATE (outflow_limited(Nnodes))
-    ALLOCATE (NPipes_At_Node_with_Pumps(Nnodes))
     
+    ALLOCATE (nonpipe_flow(Nlinks-Npipes))
+    
+    ALLOCATE (Klocal(NR,2))
     ALLOCATE (Dx(NR))
     ALLOCATE (NX(NR))
     ALLOCATE (A_cell_dry_sloped(NR))
@@ -64,14 +43,7 @@ integer :: NR
     ALLOCATE (y_for_phi_max(NR))
     ALLOCATE (Qmin(NR))
     ALLOCATE (S0(NR))
-    ALLOCATE (Qpump_link(NR)) 
         
-    !Pressurization and Depressurization of the system  
-    !Pumping rates at selected nodes.
-    ALLOCATE (Qpump(Nnodes))
-    ALLOCATE (t_begin_pump(Nnodes))
-    ALLOCATE (IDpump(Nnodes)) !IDpump (0 No pumping, 1 pumping)
-    
     !Boundaries         
     ALLOCATE (Qbound(NR,2))
     ALLOCATE (Fupst(NR,4))
@@ -101,41 +73,13 @@ integer :: NR
     ALLOCATE (yres_jun_old(Nnodes)) 
     ALLOCATE (max_elev_crown(Nnodes))
     ALLOCATE (max_crown_pipe(Nnodes))
-    ALLOCATE (Number_of_zero_drops(Nnodes))
-    ALLOCATE (ID_Number_of_zero_drops(Nnodes,10))
-    ALLOCATE (PumpFlowToNode(Nnodes))
+    ALLOCATE (NonPipeFlowToNode(Nnodes))
             
-    !Gates
-    ALLOCATE (Cd_gate(Nnodes))  
-    ALLOCATE (Hgate_open(Nnodes))   
-    ALLOCATE (h_gate_m(Nnodes))      
-    ALLOCATE (gate_thresholdDepth_TimeSpecified(Nnodes)) !This defines if the Gate will be operated based on a threshold depth or 
-    !if the operation is according to a time schedule (1: based on threshold depth, 2: based on time schedule)
-    ALLOCATE (gate_Activation(Nnodes)) !!0 if operation was not activated, 1 if gate operation was started or completed.       
-    ALLOCATE (t_gate_act_initial(Nnodes)) !This is the initial time at which gate will be operated 
-    ALLOCATE (t_gate_act_final(Nnodes)) !This is the final time at which gate will be operated 
-    ALLOCATE(character(IDLEN) :: Depth_check_Node_Gate(Nnodes))
-    ALLOCATE (check_Node_Gate_ITM(Nnodes)) 
-    ALLOCATE (ClosureTime_Minutes_Gate(Nnodes)) !This is the closure/opening rate of the gate 
-    
-    !Rating curve
-    ALLOCATE (Max_flow_rating_curve(Nnodes))
-    !Maximum flow specified at the rating curve. This is used to check if the water level in the rating curve is exceeded.       
-    ALLOCATE (Max_Head_rating_curve(Nnodes))
-    !Maximum Head specified at the rating curve. This is used to check if the water level in the rating curve is exceeded.  
-    ALLOCATE (area_weir(Nnodes))
-    !cross-section area of weir (bottom to weir crest). 
-      
-    !Reservoir  
-    ALLOCATE (yres_up(50))  
-    
     !Dropshafts
     ALLOCATE (yudrop_n(NR+2))
     ALLOCATE (yudrop_n_1(NR+2)) 
     ALLOCATE (ydropmin(Nnodes))
     ALLOCATE (dropmin(Nnodes))
-    ALLOCATE (sum_dry_bed_node(Nnodes))
-    ALLOCATE(NoConvergence_Junction_GLOBAL(Nnodes))
     
     !Air pockets 
     ALLOCATE (VOLap(NR,50))

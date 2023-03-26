@@ -3,8 +3,8 @@ unit Uimport;
 {-------------------------------------------------------------------}
 {                    Unit:    Uimport.pas                           }
 {                    Project: ITM                                   }
-{                    Version: 1.5                                   }
-{                    Date:    10/23/22                              }
+{                    Version: 2.0                                   }
+{                    Date:    03/04/23                              }
 {                                                                   }
 {   Delphi Pascal unit that imports an ITM project's data from a    }
 {   a formatted text file.                                          }
@@ -52,27 +52,27 @@ const
     ('[TITLE',                    //0
      '[OPTION',                   //1
      '[JUNCTION',                 //2
-     '[CONSTBOUND',               //3
-     '[GATE',                     //4
-     '[RATINGUNIT',               //5
-     '[STORAGE',                  //6
-     '[CONDUIT',                  //7
-     '[PUMP',                     //8
-     '[XSECTION',                 //9
-     '[LOSS',                     //10
-     '[INFLOW',                   //11
-     '[CURVE',                    //12
-     '[TIMESERIES',               //13
-     '[FILE',                     //14
-     '[MAP',                      //15
-     '[COORDINATES',              //16
-     '[VERTICES',                 //17
-     '[LABELS',                   //18
-     '[BACKDROP',                 //19
-     '[PROFILE',                  //20
-     '[TAG',                      //21
-     '[BOUNDAR',                  //22
-     '[WEIR');                    //23
+     '[BOUNDAR',                  //3
+     '[STORAGE',                  //4
+     '[CONDUIT',                  //5
+     '[PUMP',                     //6
+     '[ORIFICE',                  //7
+     '[WEIR',                     //8
+     '[OUTLET',                   //9
+     '[XSECTION',                 //10
+     '[LOSS',                     //11
+     '[CONTROL',                  //12
+     '[INFLOW',                   //13
+     '[CURVE',                    //14
+     '[TIMESERIES',               //15
+     '[FILE',                     //16
+     '[MAP',                      //17
+     '[COORDINATES',              //18
+     '[VERTICES',                 //19
+     '[LABELS',                   //20
+     '[BACKDROP',                 //21
+     '[PROFILE',                  //22
+     '[TAG');                     //23
 
 var
   FileType     : TFileType;
@@ -277,84 +277,6 @@ begin
   end;
 end;
 
-function ReadGateData: Integer;
-//-----------------------------------------------------------------------------
-//  Reads Gate node data from a line of input.
-//-----------------------------------------------------------------------------
-var
-  aNode: TNode;
-  ID   : String;
-begin
-  if Ntoks < 3
-  then Result := ErrMsg(ITEMS_ERR, '')
-  else begin
-    Result := 0;
-    ID := TokList[0];
-    aNode := TNode.Create;
-    NodeList.AddObject(ID, aNode);
-    aNode.Ntype := GATE;
-    aNode.X := MISSING;
-    aNode.Y := MISSING;
-    aNode.Zindex := -1;
-    Uutils.CopyStringArray(Project.DefProp[GATE].Data, aNode.Data);
-    Project.Lists[GATE].AddObject(ID, aNode);
-    Project.HasItems[GATE] := True;
-    aNode.Data[COMMENT_INDEX ] := Comment;
-    aNode.Data[NODE_INVERT_INDEX] := TokList[1];
-    aNode.Data[GATE_HLOSS_CURVE_INDEX] := TokList[2];
-    if Ntoks > 3 then
-    begin
-      if not SameText(TokList[3], '*') then
-        aNode.Data[GATE_TIME_SERIES_INDEX] := TokList[3];
-    end;
-    if Ntoks > 4 then
-      aNode.Data[GATE_INIT_OPENING_INDEX] := TokList[4];
-    if Ntoks > 5 then
-      aNode.Data[GATE_OPEN_RATE_INDEX] := TokList[5];
-    if Ntoks > 7 then
-    begin
-      aNode.Data[GATE_CONTROL_NODE_INDEX] := TokList[6];
-      aNode.Data[GATE_CONTROL_CURVE_INDEX] := TokList[7];
-    end;
-
-    if Length(aNode.Data[GATE_TIME_SERIES_INDEX]) > 0 then
-      aNode.Data[GATE_CONTROL_METHOD_INDEX] := ControlMethods[1]
-    else if Length(aNode.Data[GATE_CONTROL_CURVE_INDEX]) > 0 then
-      aNode.Data[GATE_CONTROL_METHOD_INDEX] := ControlMethods[2]
-    else
-      aNode.Data[GATE_CONTROL_METHOD_INDEX] := ControlMethods[0];
-  end;
-end;
-
-function ReadWeirData: Integer;
-//-----------------------------------------------------------------------------
-//  Reads Weir node data from a line of input.
-//-----------------------------------------------------------------------------
-var
-  aNode: TNode;
-  ID   : String;
-begin
-  if Ntoks < 4
-  then Result := ErrMsg(ITEMS_ERR, '')
-  else begin
-    Result := 0;
-    ID := TokList[0];
-    aNode := TNode.Create;
-    NodeList.AddObject(ID, aNode);
-    aNode.Ntype := WEIR;
-    aNode.X := MISSING;
-    aNode.Y := MISSING;
-    aNode.Zindex := -1;
-    Uutils.CopyStringArray(Project.DefProp[WEIR].Data, aNode.Data);
-    Project.Lists[WEIR].AddObject(ID, aNode);
-    Project.HasItems[WEIR] := True;
-    aNode.Data[COMMENT_INDEX ] := Comment;
-    aNode.Data[NODE_INVERT_INDEX] := TokList[1];
-    aNode.Data[WEIR_CREST_ELEV_INDEX] := TokList[2];
-    aNode.Data[WEIR_RATING_CURVE_INDEX] := TokList[3];
-  end;
-end;
-
 function ReadConduitData: Integer;
 //-----------------------------------------------------------------------------
 //  Reads Conduit data from a line of input.
@@ -390,7 +312,6 @@ begin
       if Ntoks > 8 then aLink.Data[CONDUIT_DEPTH_TYPE_INDEX] := TokList[8];
       if Ntoks > 9 then aLink.Data[CONDUIT_DEPTH_VALUE_INDEX] := TokList[9];
       aLink.Data[COMMENT_INDEX ] := Comment;
-      aLink.HasPump := False;
       Result := 0;
     end;
   end;
@@ -398,44 +319,181 @@ end;
 
 function ReadPumpData: Integer;
 //-----------------------------------------------------------------------------
-//  Reads pump data from a line of input.
+//  Reads Pump data from a line of input.
 //-----------------------------------------------------------------------------
 var
   aLink : TLink;
-  Ltype : Integer;
-  Lindex: Integer;
+  aNode1: TNode;
+  aNode2: TNode;
+  ID    : String;
 begin
-  if nToks < 2 then
-    Result := ErrMsg(ITEMS_ERR, '')
-  else if Project.FindLink(TokList[0], Ltype, Lindex) = False then
-    Result := ErrMsg(LINK_ERR, TokList[0])
-  else
+  if nToks < 8 then
   begin
-    aLink := Project.GetLink(Ltype, Lindex);
-    aLink.Data[CONDUIT_HAS_PUMP_INDEX] := 'YES';
-    aLink.HasPump := True;
-    aLink.Data[PUMP_CURVE_INDEX] := TokList[1];
-    if nToks > 2 then
-      aLink.Data[PUMP_LOSS_COEFF_INDEX] := TokList[2];
-    if nToks > 3 then
-      aLink.Data[PUMP_FRICTION_INDEX] := TokList[3];
-    if nToks > 4 then aLink.Data[PUMP_INIT_SETTING_INDEX] := TokList[4];
-    if Ntoks > 5 then
-    begin
-      if not SameText(TokList[5], '*') then
-        aLink.Data[PUMP_TIME_SERIES_INDEX] := TokList[5];
-    end;
-    if Ntoks > 7 then
-    begin
-      aLink.Data[PUMP_CONTROL_NODE_INDEX] := TokList[6];
-      aLink.Data[PUMP_CONTROL_CURVE_INDEX] := TokList[7];
-    end;
-    if Length(aLink.Data[PUMP_TIME_SERIES_INDEX]) > 0 then
-      aLink.Data[PUMP_CONTROL_METHOD_INDEX] := ControlMethods[1]
-    else if Length(aLink.Data[PUMP_CONTROL_CURVE_INDEX]) > 0 then
-      aLink.Data[PUMP_CONTROL_METHOD_INDEX] := ControlMethods[2]
-    else
-      aLink.Data[PUMP_CONTROL_METHOD_INDEX] := ControlMethods[0];
+    Result := ErrMsg(ITEMS_ERR, '');
+    exit;
+  end;
+
+  ID := TokList[0];
+  aNode1 := FindNode(TokList[1]);
+  aNode2 := FindNode(TokList[2]);
+  if (aNode1 = nil) then Result := ErrMsg(NODE_ERR, TokList[1])
+  else if (aNode2 = nil) then Result := ErrMsg(NODE_ERR, TokList[2])
+
+  else begin
+    aLink := TLink.Create;
+    LinkList.AddObject(ID, aLink);
+    aLink.Ltype := PUMP;
+    aLink.Node1 := aNode1;
+    aLink.Node2 := aNode2;
+    aLink.Zindex := -1;
+    Uutils.CopyStringArray(Project.DefProp[PUMP].Data, aLink.Data);
+    Project.Lists[PUMP].AddObject(ID, aLink);
+    Project.HasItems[PUMP] := True;
+    aLink.Data[PUMP_CURVE_INDEX] := TokList[3];
+    aLink.Data[PUMP_DIAM_INDEX] := TokList[4];
+    aLink.Data[PUMP_LENGTH_INDEX] := TokList[5];
+    aLink.Data[PUMP_FRICTION_INDEX] := TokList[6];
+    aLink.Data[PUMP_LOSS_COEFF_INDEX] := TokList[7];
+    if nToks > 8 then
+      aLink.Data[PUMP_INIT_SETTING_INDEX] := TokList[8];
+    aLink.Data[COMMENT_INDEX ] := Comment;
+    Result := 0;
+  end;
+end;
+
+function ReadOrificeData: Integer;
+//-----------------------------------------------------------------------------
+//  Reads Orifice data from a line of input.
+//-----------------------------------------------------------------------------
+var
+  aLink : TLink;
+  aNode1: TNode;
+  aNode2: TNode;
+  ID    : String;
+begin
+  if nToks < 8 then
+  begin
+    Result := ErrMsg(ITEMS_ERR, '');
+    exit;
+  end;
+
+  ID := TokList[0];
+  aNode1 := FindNode(TokList[1]);
+  aNode2 := FindNode(TokList[2]);
+  if (aNode1 = nil) then Result := ErrMsg(NODE_ERR, TokList[1])
+  else if (aNode2 = nil) then Result := ErrMsg(NODE_ERR, TokList[2])
+
+  else begin
+    aLink := TLink.Create;
+    LinkList.AddObject(ID, aLink);
+    aLink.Ltype := ORIFICE;
+    aLink.Node1 := aNode1;
+    aLink.Node2 := aNode2;
+    aLink.Zindex := -1;
+    Uutils.CopyStringArray(Project.DefProp[ORIFICE].Data, aLink.Data);
+    Project.Lists[ORIFICE].AddObject(ID, aLink);
+    Project.HasItems[ORIFICE] := True;
+
+    aLink.Data[ORIFICE_TYPE_INDEX]      := TokList[3];
+    aLink.Data[ORIFICE_SHAPE_INDEX]     := TokList[4];
+    aLink.Data[ORIFICE_BOTTOM_HT_INDEX] := TokList[5];
+    aLink.Data[ORIFICE_COEFF_INDEX]     := TokList[6];
+    aLink.Data[ORIFICE_FLAPGATE_INDEX]  := TokList[7];
+    if nToks > 8 then
+      aLink.Data[ORIFICE_INIT_SETTING_INDEX] := TokList[8];
+    if nToks > 9 then
+      aLink.Data[ORIFICE_CLOSE_RATE_INDEX] := TokList[9];
+    aLink.Data[COMMENT_INDEX ] := Comment;
+    Result := 0;
+  end;
+end;
+
+function ReadWeirData: Integer;
+//-----------------------------------------------------------------------------
+//  Reads Weir data from a line of input.
+//-----------------------------------------------------------------------------
+var
+  aLink : TLink;
+  aNode1: TNode;
+  aNode2: TNode;
+  ID    : String;
+begin
+  if nToks < 8 then
+  begin
+    Result := ErrMsg(ITEMS_ERR, '');
+    exit;
+  end;
+
+  ID := TokList[0];
+  aNode1 := FindNode(TokList[1]);
+  aNode2 := FindNode(TokList[2]);
+  if (aNode1 = nil) then Result := ErrMsg(NODE_ERR, TokList[1])
+  else if (aNode2 = nil) then Result := ErrMsg(NODE_ERR, TokList[2])
+
+  else begin
+    aLink := TLink.Create;
+    LinkList.AddObject(ID, aLink);
+    aLink.Ltype := WEIR;
+    aLink.Node1 := aNode1;
+    aLink.Node2 := aNode2;
+    aLink.Zindex := -1;
+    Uutils.CopyStringArray(Project.DefProp[WEIR].Data, aLink.Data);
+    Project.Lists[WEIR].AddObject(ID, aLink);
+    Project.HasItems[WEIR] := True;
+
+    aLink.Data[WEIR_TYPE_INDEX] := TokList[3];
+    aLink.Data[WEIR_CREST_INDEX] := TokList[4];
+    aLink.Data[WEIR_COEFF_INDEX] := TokList[5];
+//    aLink.Data[WEIR_FLAPGATE_INDEX] := TokList[6];
+    aLink.Data[WEIR_CONTRACT_INDEX] := TokList[6];
+//    aLink.Data[WEIR_END_COEFF_INDEX] := TokList[8];
+    aLink.Data[WEIR_SURCHARGE_INDEX] := TokList[7];
+    if nToks > 8 then
+      aLink.Data[WEIR_INIT_SETTING_INDEX] := TokList[8];
+    if nToks > 9 then
+      aLink.Data[WEIR_CLOSE_RATE_INDEX] := TokList[9];
+    aLink.Data[COMMENT_INDEX ] := Comment;
+    Result := 0;
+  end;
+
+end;
+
+function ReadOutletData: Integer;
+//-----------------------------------------------------------------------------
+//  Reads Outlet data from a line of input.
+//-----------------------------------------------------------------------------
+var
+  aLink : TLink;
+  aNode1: TNode;
+  aNode2: TNode;
+  ID    : String;
+begin
+  if nToks < 6 then
+  begin
+    Result := ErrMsg(ITEMS_ERR, '');
+    exit;
+  end;
+
+  ID := TokList[0];
+  aNode1 := FindNode(TokList[1]);
+  aNode2 := FindNode(TokList[2]);
+  if (aNode1 = nil) then Result := ErrMsg(NODE_ERR, TokList[1])
+  else if (aNode2 = nil) then Result := ErrMsg(NODE_ERR, TokList[2])
+
+  else begin
+    aLink := TLink.Create;
+    LinkList.AddObject(ID, aLink);
+    aLink.Ltype := OUTLET;
+    aLink.Node1 := aNode1;
+    aLink.Node2 := aNode2;
+    aLink.Zindex := -1;
+    Uutils.CopyStringArray(Project.DefProp[OUTLET].Data, aLink.Data);
+    Project.Lists[OUTLET].AddObject(ID, aLink);
+    Project.HasItems[OUTLET] := True;
+
+    aLink.Data[OUTLET_OFFSET_INDEX] := TokList[3];
+    aLink.Data[OUTLET_FLAPGATE_INDEX] := TokList[4];
+    aLink.Data[OUTLET_CURVE_INDEX] := TokList[5];
     Result := 0;
   end;
 end;
@@ -481,6 +539,58 @@ begin
       aLink.Data[CONDUIT_ENTRY_LOSS_INDEX] := TokList[1];
       aLink.Data[CONDUIT_EXIT_LOSS_INDEX] := TokList[2];
       Result := 0;
+    end;
+  end;
+end;
+
+function ReadControlData: Integer;
+//-----------------------------------------------------------------------------
+//  Reads link control data from a line of input.
+//-----------------------------------------------------------------------------
+var
+  aLink : TLink;
+  Ltype : Integer;
+  Lindex: Integer;
+  CtrlType: Integer;
+  CtrlIndex: Integer;
+
+begin
+  Result := 0;
+  if nToks < 4 then
+    Result := ErrMsg(ITEMS_ERR, '')
+
+  else if Project.FindLink(TokList[0], Ltype, Lindex) = False then
+    Result := ErrMsg(LINK_ERR, TokList[0])
+
+  else if not Ltype in [PUMP..WEIR] then
+    Result := ErrMsg(LINK_ERR, TokList[0])
+
+  else begin
+    aLink := Project.GetLink(Ltype, Lindex);
+    case Ltype of
+    PUMP:    CtrlIndex := PUMP_CONTROL_TYPE_INDEX;
+    ORIFICE: CtrlIndex := ORIFICE_CONTROL_TYPE_INDEX;
+    WEIR:    CtrlIndex := WEIR_CONTROL_TYPE_INDEX;
+    end;
+
+    CtrlType := 0;
+    if SameText(TokList[1], 'TIME') then CtrlType := 1
+    else if SameText(TokList[1], 'DEPTH') then CtrlType := 2
+    else Result := ErrMsg(KEYWORD_ERR, TokList[1]);
+    if (CtrlType = 2) and (nToks < 5) then Result := ErrMsg(ITEMS_ERR, '');
+  end;
+
+  if Result = 0 then
+  begin
+    aLink.Data[CtrlIndex]   := TokList[1];    //Control Type
+    if CtrlType = 1 then
+    begin
+      aLink.Data[CtrlIndex+1] := TokList[2];  //Control Series
+    end
+    else begin
+      aLink.Data[CtrlIndex+1] := '';
+      aLink.Data[CtrlIndex+2] := TokList[3];  //Control Node
+      aLink.Data[CtrlIndex+3] := TokList[4];  //Control Curve
     end;
   end;
 end;
@@ -550,7 +660,6 @@ var
   M       : Integer;
   ObjType : Integer;
   ID      : String;
-  Tok1    : String;
   aCurve  : TCurve;
 begin
   // Check for too few tokens
@@ -574,9 +683,7 @@ begin
 
       // Check for valid curve type keyword
       M := -1;
-      Tok1 := AnsiUpperCase(TokList[1]);
-      if Pos('PUMP', Tok1) = 1 then M := PUMP_CURVE
-      else for L := 0 to High(CurveTypeOptions) do
+      for L := 0 to High(CurveTypeOptions) do
       begin
         if SameText(TokList[1], CurveTypeOptions[L]) then
         begin
@@ -592,11 +699,10 @@ begin
 
       // Convert curve type keyword index to a curve object category
       case M of
-      0: ObjType := GATECURVE;
-      1: ObjType := RATINGCURVE;
-      2: ObjType := STORAGECURVE;
-      3: ObjType := PUMPCURVE;
-      4: ObjType := CONTROLCURVE;
+      0: ObjType := STORAGECURVE;
+      1: ObjType := PUMPCURVE;
+      2: ObjType := RATINGCURVE;
+      3: ObjType := CONTROLCURVE;
       end;
 
       // Create a new curve object
@@ -1179,26 +1285,26 @@ begin
     1:    Result := ReadOptionData;
     2:    Result := ReadJunctionData;
     3:    Result := ReadBoundaryData;
-    4:    Result := ReadGateData;
-    5:    Result := ReadWeirData;
-    6:    Result := ReadStorageData;
-    7:    Result := ReadConduitData;
-    8:    Result := ReadPumpData;
-    9:    Result := ReadXsectionData;
-    10:   Result := ReadLossData;
-    11:   Result := ReadExInflowData;
-    12:   Result := ReadCurveData;
-    13:   Result := ReadTimeseriesData;
-    14:   Result := ReadFileData;
-    15:   Result := ReadMapData;
-    16:   Result := ReadCoordData;
-    17:   Result := ReadVertexdata;
-    18:   Result := ReadLabelData;
-    19:   Result := ReadBackdropData;
-    20:   Result := ReadProfileData;
-    21:   Result := ReadTagData;
-    22:   Result := ReadBoundaryData;
-    23:   Result := ReadWeirData;
+    4:    Result := ReadStorageData;
+    5:    Result := ReadConduitData;
+    6:    Result := ReadPumpData;
+    7:    Result := ReadOrificeData;
+    8:    Result := ReadWeirData;
+    9:    Result := ReadOutletData;
+    10:   Result := ReadXsectionData;
+    11:   Result := ReadLossData;
+    12:   Result := ReadControlData;
+    13:   Result := ReadExInflowData;
+    14:   Result := ReadCurveData;
+    15:   Result := ReadTimeseriesData;
+    16:   Result := ReadFileData;
+    17:   Result := ReadMapData;
+    18:   Result := ReadCoordData;
+    19:   Result := ReadVertexdata;
+    20:   Result := ReadLabelData;
+    21:   Result := ReadBackdropData;
+    22:   Result := ReadProfileData;
+    23:   Result := ReadTagData;
     else  Result := 0;
   end;
 end;
