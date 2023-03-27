@@ -139,7 +139,7 @@ implementation
 uses Dcopy, Dproplot, Fmain, Fmap, Uoutput, Ugraph;
 
 const
-  MINLENGTH = 10;
+  MINLENGTH = 33;
   TXT_DISTANCE = 'Distance';
   TXT_ELEVATION = 'Elevation';
   TXT_HT_ABOVE = 'Height Above';
@@ -1184,12 +1184,12 @@ begin
     MaxDepth := 0;
   end;
 
-{  if LinkData.Length = 0 then
+  if LinkData.Length = 0 then
   begin
     if Uglobals.UnitSystem = usUS
     then LinkData.Length := MINLENGTH
-    else LinkData.Length := 0.3048*MINLENGTH;
-  end; }
+    else LinkData.Length := 0.3048 * MINLENGTH;
+  end;
 
 end;
 
