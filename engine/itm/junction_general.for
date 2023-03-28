@@ -569,9 +569,11 @@ c     &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 	yres = yres_jun_old(R) + (temp3+Qsum)*dt/Ares
       
       if (yres < 0d0)then
-          write(98,*),'yres < 0d0',yres
-          write(98,*),'t_global',t_global
-          write(99,*),'yres < 0d0',yres
+          call itm_get_swmm_id(0, R, temp_id) ! 0 for nodes
+          write(98,*),'yres < 0d0',yres, 'node = ',trim(temp_id)   
+          write(98,*),'temp3, Qsum', temp3, Qsum          
+          write(98,*),'t_global',t_global          
+          write(99,*),'yres < 0d0',yres, 'node = ',trim(temp_id)  
           call endprog; GLOBAL_STATUS_FLAG = 1; return
       endif  
       

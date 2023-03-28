@@ -113,7 +113,7 @@
         case default
             temp_id2 = 'PIPE'
         end select
-        WRITE(99,'(I4,A10, A15)'), j, trim(temp_id), temp_id2 
+        WRITE(99,'(I4,A20, A20)'), j, trim(temp_id), temp_id2 
     enddo    
     
     write(99,*)'_____________________________________________________'
@@ -407,8 +407,9 @@ enddo
     do j=1,NR   
         S0(j) = (zb(j,1) - zb(j,2))/Length(j)            
         call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
-        WRITE(99,'(A5, F16.8)'),trim(temp_id),S0(j)             
-            
+        WRITE(99,'(A5, F16.8)'),trim(temp_id),S0(j)     
+        
+        if (link_type(j) .ne. PUMP) then            
             if (S0(j) < 0d0)then  !Negative slope
                 call itm_get_swmm_id(1, j, temp_id) ! 1 for pipes
                 write(99,*),'pipe ID = ',temp_id,'slope = ',S0(j)
@@ -421,6 +422,7 @@ enddo
                 write(98,*),'Change direction of flow'
                 call endprog; GLOBAL_STATUS_FLAG = 1; return
             endif 
+        endif 
     enddo
       
     !Dry bed and free surface and pressurized flow limits

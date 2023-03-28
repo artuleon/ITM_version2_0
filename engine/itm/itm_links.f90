@@ -45,7 +45,7 @@ integer :: i, j, j1, j2, c
     j2 = Node2(link_index)
       
     ! Cannot pump if suction side water depth is below 0.45 m (1.5 ft)
-   ! if  (yres_jun_old(j1) < 0.45) return
+   if  (yres_jun_old(j1) < 0.45) return
     
     ! Find speed control setting
     call apply_control(pumps(i)%control, T_GLOBAL, DT_GLOBAL)

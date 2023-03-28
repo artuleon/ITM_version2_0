@@ -538,13 +538,13 @@ begin
   S.Add('');
   S.Add('[CONTROLS]');
 
-  Hdr1 := ';;              ' + Tab + 'Time to ' + Tab + 'Control ' + Tab;
-  Hdr2 := ';;Link          ' + Tab + 'Close   ' + Tab + 'Type    ' + Tab;
-  Hdr3 := ';;--------------' + Tab + '--------' + Tab + '--------' + Tab;
+  Hdr1 := ';;              ' + Tab + 'Control ' + Tab + 'Control         ' + Tab;
+  Hdr2 := ';;Link          ' + Tab + 'Type    ' + Tab + 'Series          ' + Tab;
+  Hdr3 := ';;--------------' + Tab + '--------' + Tab + '----------------' + Tab;
 
-  Hdr1 := Hdr1 + 'Control         ' + Tab + 'Control         ' + Tab + 'Control         ';
-  Hdr2 := Hdr2 + 'Series          ' + Tab + 'Node            ' + Tab + 'Curve           ';
-  Hdr3 := Hdr3 + '----------------' + Tab + '----------------' + Tab + '----------------';
+  Hdr1 := Hdr1 + 'Control         ' + Tab + 'Control         ';
+  Hdr2 := Hdr2 + 'Node            ' + Tab + 'Curve           ';
+  Hdr3 := Hdr3 + '----------------' + Tab + '----------------';
 
   S.Add(Hdr1);
   S.Add(Hdr2);
@@ -564,15 +564,6 @@ begin
       if SameText(L.Data[CtrlIndex], 'NONE') then continue;
       Line := Format('%-16s', [Project.Lists[I].Strings[J]]);
       Line := Line + Tab + Format('%-8s', [L.Data[CtrlIndex]]);
-      if I = PUMP then
-      begin
-        Line := Line + Tab + '0       ';
-      end
-      else
-      begin
-        Line := Line + Tab + Format('%-8s', [L.Data[CtrlIndex + 1]]);
-        Inc(CtrlIndex);
-      end;
       if SameText(L.Data[CtrlIndex], 'TIME') then
         Line := Line + Tab + Format('%-16s', [L.Data[CtrlIndex + 1]])
       else begin
