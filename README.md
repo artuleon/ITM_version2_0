@@ -1,5 +1,5 @@
-[CASEC.inp.txt](https://github.com/artuleon/ITM_version2_0/files/14784539/CASEC.inp.txt)[CASEA.inp.txt](https://github.com/artuleon/ITM_version2_0/files/14784533/CASEA.inp.txt)Videos: 
 
+Videos and Input Files for Cases A, B and C
 Video for Case A
 https://github.com/artuleon/ITM_version2_0/assets/63695542/16c53f25-15ba-4a61-8e09-0cf1f1f146f1
 
